@@ -6,7 +6,7 @@ Include tests for:
 
 - Authentication flows.
 - Profile creation and editing.
-- Swipe and match logic.
+- Swipe eligibility and match logic.
 - Team creation and joining.
 - QR token validation.
 - Event registration and waitlist behavior.
@@ -41,6 +41,9 @@ Test Supabase interactions for:
 - GitHub login works.
 - Discord login works.
 - New users can complete onboarding.
+- New users can select existing members as their team or choose looking for team.
+- Swipe is hidden for users who already have a team that is not recruiting.
+- Teams marked as recruiting can swipe through the eligible participant pool.
 - Matching creates a match on mutual right swipe.
 - Team QR join rejects expired tokens.
 - Team chat blocks non-members.

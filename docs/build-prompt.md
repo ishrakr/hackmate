@@ -16,7 +16,7 @@ The app must prioritize stability, mobile-first UX, accessibility, and ease of u
 ## Required Capabilities
 
 - Participant onboarding and profile management.
-- Tinder-like swipe matching for participants and teams.
+- Tinder-like swipe matching only for solo users looking for a team and teams looking for members.
 - Team creation, recruiting, membership, and QR-based joining.
 - Events page for upcoming hackathons.
 - Event detail pages with FAQ, schedule, restrictions, hours, parking, map, talks, food, and announcements.
@@ -30,4 +30,4 @@ The app must prioritize stability, mobile-first UX, accessibility, and ease of u
 
 ## Completion Criteria
 
-The build is complete when authenticated users can create profiles, browse events, match with participants or teams, join teams by QR code, chat in authorized channels, view event information, receive announcements, check in, submit feedback, and when admins can manage users and audit activity through the admin portal.
+The build is complete when authenticated users can create profiles, choose existing members as their team or mark themselves as looking for a team, browse events, use swipe matching only when they or their team are actively looking for members, join teams by QR code, chat in authorized channels, view event information, receive announcements, check in, submit feedback, and when admins can manage users and audit activity through the admin portal.

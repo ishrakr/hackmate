@@ -21,14 +21,19 @@ Profiles include:
 - Skills with competency
 - Desired role
 - Looking for team status
+- Current team status
 - Availability
 
 ## Swipe Matching
 
 Swipe behavior:
 
+- Swipe is available only to solo users who marked themselves as looking for a team and teams that are actively looking for members.
+- Users who already have a complete team should not be shown the swipe flow unless their team is recruiting additional members.
+- After signup, users can select existing members as their team or choose looking for team.
+- Teams looking for members can swipe through the available pool of participants who are looking for a team or open to joining.
 - Swipe right expresses interest.
-- Swipe left skips and returns the profile or team to the pool.
+- Swipe left skips and returns the participant or team to the eligible pool.
 - Mutual interest creates a match.
 - Desktop users receive explicit skip and interested buttons.
 
@@ -46,8 +51,10 @@ Teams support:
 
 - Team creation.
 - Team profile editing.
+- Selecting existing members during or after onboarding.
 - Open roles.
 - Required skills.
+- Recruiting status to control whether the team can access swipe matching.
 - Join requests.
 - Member approval.
 - QR-based joining.

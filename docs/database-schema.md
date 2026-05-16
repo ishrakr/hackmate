@@ -22,6 +22,7 @@ Fields:
 - `experience_level`
 - `desired_role`
 - `looking_for_team`
+- `current_team_id`
 - `open_to_joining_team`
 - `availability`
 - `contact_preferences`
@@ -93,6 +94,7 @@ Statuses:
 - `project_idea`
 - `github_url`
 - `devpost_url`
+- `recruiting_members`
 - `created_by`
 - `created_at`
 - `updated_at`
@@ -128,8 +130,11 @@ Statuses:
 
 ### swipes
 
+Swipes should only be created when the actor is eligible for matching. Eligible actors are solo users marked as looking for a team or teams marked as recruiting members.
+
 - `id`
 - `actor_user_id`
+- `actor_team_id`
 - `target_user_id`
 - `target_team_id`
 - `event_id`

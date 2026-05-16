@@ -4,8 +4,8 @@ Hackmate is a mobile-first hackathon companion web application for participants,
 
 ## Core Goals
 
-- Help solo participants find teams.
-- Help teams recruit participants by role and skill.
+- Help participants either form an initial team from existing members or mark themselves as looking for a team.
+- Help teams that still need members recruit participants by role and skill.
 - Provide event information, maps, schedules, FAQs, announcements, and feedback.
 - Support real-time public, team, and support chat.
 - Provide organizer and admin tools for managing events, users, attendance, logs, and sessions.
@@ -42,7 +42,7 @@ Hackmate is a mobile-first hackathon companion web application for participants,
 4. Build onboarding and profile management.
 5. Build events listing and event detail pages.
 6. Build team creation and team profiles.
-7. Build swipe-based matching.
+7. Build swipe-based matching for users and teams that are actively looking for members.
 8. Build live chat.
 9. Build QR-based team joining.
 10. Build organizer announcements.

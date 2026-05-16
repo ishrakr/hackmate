@@ -10,7 +10,8 @@ Hackmate is a hackathon operating platform for participants, teams, organizers, 
 
 - Create and edit profile.
 - Browse hackathons.
-- Swipe on teams or other participants.
+- Select existing members as a team or mark themselves as looking for a team after signup.
+- Use swipe matching only when looking for a team.
 - Join teams.
 - Use public, team, and support chat.
 - Check in to events.
@@ -20,6 +21,7 @@ Hackmate is a hackathon operating platform for participants, teams, organizers, 
 
 - Create and manage a team.
 - Define open roles and required skills.
+- Swipe through the available participant pool when looking for members.
 - Review join requests.
 - Generate QR join codes.
 - Manage team chat access.
@@ -45,14 +47,16 @@ Hackmate is a hackathon operating platform for participants, teams, organizers, 
 
 1. User signs in with GitHub or Discord.
 2. User completes onboarding and creates a participant profile.
-3. User browses upcoming hackathons.
-4. User joins or registers for an event.
-5. User swipes on participants or teams.
-6. Mutual interest creates a match.
-7. User joins a team manually or by QR code.
-8. User communicates through lobby, team, or support chat.
-9. User checks in at the event.
-10. User submits post-event feedback.
+3. User selects existing members as their team or marks themselves as looking for a team.
+4. User browses upcoming hackathons.
+5. User joins or registers for an event.
+6. Solo users looking for a team swipe through teams or other available participants.
+7. Teams looking for members swipe through the available participant pool.
+8. Mutual interest creates a match.
+9. User joins a team manually or by QR code.
+10. User communicates through lobby, team, or support chat.
+11. User checks in at the event.
+12. User submits post-event feedback.
 
 ## Non-Functional Requirements
 
