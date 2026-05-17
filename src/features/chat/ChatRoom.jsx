@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useAuth } from "../auth/auth-context.jsx";
-import { listEvents } from "../events/event-service.js";
+import { listEvents, listUserEventRegistrations } from "../events/event-service.js";
 import {
   getOrCreateChat,
   listChatMessages,
@@ -139,7 +139,7 @@ export function ChatRoom({ eventId = null, teamId = null, title, type }) {
   const isReady = status === "ready";
 
   return (
-    <section className="chat-panel native-card" aria-label={`${title} messages`}>
+    <section className="chat-panel" aria-label={`${title} messages`}>
       <div className="chat-panel-header">
         <div>
           <p className="card-label">{type}</p>
@@ -174,7 +174,7 @@ export function ChatRoom({ eventId = null, teamId = null, title, type }) {
         <textarea
           aria-label={`Message ${title}`}
           disabled={!isReady || isSending}
-          placeholder={isReady ? "Message..." : "Waiting for channel..."}
+          placeholder={isReady ? `Message ${title}` : "Waiting for channel..."}
           rows="1"
           value={draft}
           onChange={(event) => setDraft(event.target.value)}
@@ -190,7 +190,7 @@ export function ChatRoom({ eventId = null, teamId = null, title, type }) {
           disabled={!draft.trim() || !isReady || isSending}
           type="submit"
         >
-          {isSending ? "..." : "Send"}
+          {isSending ? "..." : "↑"}
         </button>
       </form>
     </section>
@@ -243,27 +243,15 @@ export function SupportChatRoom() {
   }
 
   if (status === "loading") {
-    return (
-      <section className="native-card compact-card">
-        <p>Loading support channels.</p>
-      </section>
-    );
+    return <ChatShellNotice body="Loading support channels." />;
   }
 
   if (message) {
-    return (
-      <section className="native-card compact-card">
-        <p className="auth-error">{message}</p>
-      </section>
-    );
+    return <ChatShellNotice body={message} tone="error" />;
   }
 
   if (events.length === 0) {
-    return (
-      <section className="native-card compact-card">
-        <p>No events are available for support chat yet.</p>
-      </section>
-    );
+    return <ChatShellNotice body="No events are available for support chat yet." />;
   }
 
   return (
@@ -296,6 +284,87 @@ export function SupportChatRoom() {
   );
 }
 
+export function EventChatRoom({ title, type = "lobby" }) {
+  const { user } = useAuth();
+  const [events, setEvents] = useState([]);
+  const [registrations, setRegistrations] = useState([]);
+  const [message, setMessage] = useState("");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [selectedEventId, setSelectedEventId] = useState(searchParams.get("event") ?? "");
+  const [status, setStatus] = useState("loading");
+  const searchKey = searchParams.toString();
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadEventChoices() {
+      setStatus("loading");
+      const [eventResult, registrationResult] = await Promise.all([
+        listEvents(),
+        listUserEventRegistrations(user.id),
+      ]);
+
+      if (!isMounted) return;
+
+      const registeredIds = new Set((registrationResult.data ?? []).map((row) => row.event_id));
+      const registeredEvents = (eventResult.data ?? []).filter((event) => registeredIds.has(event.id));
+      const requestedEventId = new URLSearchParams(searchKey).get("event");
+      const fallbackEventId = registeredEvents[0]?.id ?? "";
+      const nextEventId = registeredEvents.some((event) => event.id === requestedEventId)
+        ? requestedEventId
+        : fallbackEventId;
+
+      setEvents(registeredEvents);
+      setRegistrations(registrationResult.data ?? []);
+      setSelectedEventId(nextEventId);
+      setMessage(eventResult.error?.message ?? registrationResult.error?.message ?? "");
+      setStatus("ready");
+    }
+
+    loadEventChoices();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [searchKey, user.id]);
+
+  function handleEventChange(event) {
+    const nextEventId = event.target.value;
+    setSelectedEventId(nextEventId);
+    setSearchParams(nextEventId ? { event: nextEventId } : {});
+  }
+
+  if (status === "loading") {
+    return <ChatShellNotice body="Loading your event channels." />;
+  }
+
+  if (message) {
+    return <ChatShellNotice body={message} tone="error" />;
+  }
+
+  if (events.length === 0 || registrations.length === 0) {
+    return <ChatShellNotice body="Register for an event first to unlock its lobby and support chat." />;
+  }
+
+  return (
+    <>
+      <EventChannelPicker
+        events={events}
+        selectedEventId={selectedEventId}
+        onChange={handleEventChange}
+      />
+      {selectedEventId ? (
+        <ChatRoom
+          key={`${type}-${selectedEventId}`}
+          eventId={selectedEventId}
+          title={title}
+          type={type}
+        />
+      ) : null}
+    </>
+  );
+}
+
 function ChatMessage({ message, userId }) {
   const isMine = message.sender_id === userId;
   const senderName = getSenderName(message, isMine);
@@ -322,6 +391,35 @@ function ChatMessage({ message, userId }) {
 
 function ChatSystemMessage({ body }) {
   return <p className="chat-system-message">{body}</p>;
+}
+
+function EventChannelPicker({ events, selectedEventId, onChange }) {
+  const selectedEvent = events.find((event) => event.id === selectedEventId);
+
+  return (
+    <section className="chat-event-card">
+      <div>
+        <p className="card-label">Event channel</p>
+        <h2>{selectedEvent?.name ?? "Choose event"}</h2>
+      </div>
+      <label className="form-field compact-selector" htmlFor="chatEvent">
+        <span>Switch event</span>
+        <select id="chatEvent" value={selectedEventId} onChange={onChange}>
+          {events.map((event) => (
+            <option key={event.id} value={event.id}>{event.name}</option>
+          ))}
+        </select>
+      </label>
+    </section>
+  );
+}
+
+function ChatShellNotice({ body, tone = "default" }) {
+  return (
+    <section className="native-card compact-card">
+      <p className={tone === "error" ? "auth-error" : undefined}>{body}</p>
+    </section>
+  );
 }
 
 function upsertChatMessage(messages, nextMessage, replaceId = null) {

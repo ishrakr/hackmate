@@ -14,7 +14,7 @@ import {
   useAuth,
 } from "../features/auth/auth-context.jsx";
 import { consumeAdminOAuthIntent } from "../lib/oauth-intent.js";
-import { ChatRoom, SupportChatRoom } from "../features/chat/ChatRoom.jsx";
+import { ChatRoom, EventChatRoom } from "../features/chat/ChatRoom.jsx";
 import { EventChatbot } from "../features/chat/EventChatbot.jsx";
 import {
   getEvent,
@@ -1606,11 +1606,7 @@ function ChatPage({ title }) {
           </Link>
         )}
       </section>
-      {type === "support" ? (
-        <SupportChatRoom />
-      ) : (
-        <ChatRoom title={title} type={type} />
-      )}
+      <EventChatRoom title={type === "support" ? "Organizer support" : title} type={type} />
     </ScreenStack>
   );
 }
