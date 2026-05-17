@@ -63,11 +63,11 @@ import {
 } from "../features/teams/team-service.js";
 
 const bottomTabs = [
-  { to: "/", label: "Home", mark: "⌂" },
-  { to: "/events", label: "Events", mark: "▣" },
-  { to: "/match", label: "Match", mark: "♡" },
-  { to: "/chat/lobby", label: "Chat", mark: "◉" },
-  { to: "/profile", label: "Me", mark: "●" },
+  { to: "/", label: "Home", icon: "fa-solid fa-house" },
+  { to: "/events", label: "Events", icon: "fa-solid fa-ticket" },
+  { to: "/match", label: "Match", icon: "fa-solid fa-heart" },
+  { to: "/chat/lobby", label: "Chat", icon: "fa-solid fa-comments" },
+  { to: "/profile", label: "Me", icon: "fa-solid fa-user" },
 ];
 
 const sampleMembers = ["Alex", "Mina", "Jordan"];
@@ -162,11 +162,13 @@ function AuthLayout() {
 function MobileAppLayout() {
   const { isAuthenticated, signOut, user } = useAuth();
   const [isSigningOut, setIsSigningOut] = useState(false);
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
 
   async function handleSignOut() {
     setIsSigningOut(true);
     await signOut();
     setIsSigningOut(false);
+    setIsUserMenuOpen(false);
   }
 
   return (
@@ -178,13 +180,31 @@ function MobileAppLayout() {
             <span>Hackmate</span>
           </Link>
           {isAuthenticated ? (
-            <Link className="topbar-user" to="/profile" aria-label="Open profile">
-              {user?.user_metadata?.avatar_url ? (
-                <img src={user.user_metadata.avatar_url} alt="" />
-              ) : (
-                <span>{getUserDisplayName(user).charAt(0)}</span>
-              )}
-            </Link>
+            <div className="topbar-user-wrap">
+              <button
+                className="topbar-user"
+                onClick={() => setIsUserMenuOpen((open) => !open)}
+                type="button"
+                aria-label="Open account menu"
+                aria-expanded={isUserMenuOpen}
+              >
+                {user?.user_metadata?.avatar_url ? (
+                  <img src={user.user_metadata.avatar_url} alt="" />
+                ) : (
+                  <span>{getUserDisplayName(user).charAt(0)}</span>
+                )}
+              </button>
+              {isUserMenuOpen ? (
+                <div className="topbar-menu">
+                  <Link to="/profile" onClick={() => setIsUserMenuOpen(false)}>
+                    <i className="fa-solid fa-user" aria-hidden="true" /> Profile
+                  </Link>
+                  <button disabled={isSigningOut} onClick={handleSignOut} type="button">
+                    <i className="fa-solid fa-right-from-bracket" aria-hidden="true" /> {isSigningOut ? "Signing out" : "Log out"}
+                  </button>
+                </div>
+              ) : null}
+            </div>
           ) : (
             <Link className="topbar-action" to="/login">
               Sign in
@@ -207,7 +227,7 @@ function MobileAppLayout() {
               }
             >
               <span className="tab-mark" aria-hidden="true">
-                {tab.mark}
+                <i className={tab.icon} />
               </span>
               <span>{tab.label}</span>
             </NavLink>
@@ -2015,10 +2035,10 @@ function FeaturedSkillsEditor({ skills = [], onChange }) {
 }
 
 function getSocialIcon(label) {
-  if (label === "GitHub") return "◆";
-  if (label === "LinkedIn") return "in";
-  if (label === "Devpost") return "D";
-  return "↗";
+  if (label === "GitHub") return <i className="fa-brands fa-github" aria-hidden="true" />;
+  if (label === "LinkedIn") return <i className="fa-brands fa-linkedin" aria-hidden="true" />;
+  if (label === "Devpost") return <i className="fa-solid fa-code" aria-hidden="true" />;
+  return <i className="fa-solid fa-arrow-up-right-from-square" aria-hidden="true" />;
 }
 
 function ChoiceCard({ title, body, action, to }) {

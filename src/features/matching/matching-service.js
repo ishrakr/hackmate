@@ -83,7 +83,7 @@ export async function listCandidates(actor, userId, eventId = null) {
       .map((team) => ({ type: "team", id: team.id, event_id: team.event_id, team }));
 
     const profiles = (profilesResult.data ?? [])
-      .filter((profile) => registeredUsers.has(profile.user_id) && !swiped.userIds.has(profile.user_id))
+      .filter((profile) => profile.user_id !== userId && registeredUsers.has(profile.user_id) && !swiped.userIds.has(profile.user_id))
       .map((profile) => ({
         type: "user",
         id: profile.user_id,
@@ -114,7 +114,7 @@ export async function listCandidates(actor, userId, eventId = null) {
 
   return {
     data: (profilesResult.data ?? [])
-      .filter((profile) => registeredUsers.has(profile.user_id) && !swiped.userIds.has(profile.user_id))
+      .filter((profile) => profile.user_id !== userId && registeredUsers.has(profile.user_id) && !swiped.userIds.has(profile.user_id))
       .map((profile) => ({ type: "user", id: profile.user_id, event_id: actor.team.event_id, profile })),
     error: null,
   };
@@ -122,6 +122,10 @@ export async function listCandidates(actor, userId, eventId = null) {
 
 export async function createSwipe(actor, candidate, direction) {
   if (!supabase) return { data: null, error: new Error("Supabase is not configured.") };
+  if (actor.type === "user" && candidate.type === "user" && actor.id === candidate.id) {
+    return { data: null, error: new Error("You cannot swipe on your own profile.") };
+  }
+
   const eventId = candidate.event_id ?? actor.team?.event_id ?? await getDefaultEventId();
 
   if (!eventId) {
