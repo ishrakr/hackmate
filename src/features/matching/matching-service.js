@@ -46,16 +46,17 @@ export async function getMatchingContext(userId, eventId = null) {
 export async function listCandidates(actor, userId, eventId = null) {
   if (!supabase || !actor) return { data: [], error: null };
 
-  const swipedResult = await listSwipedTargets(actor);
-  if (swipedResult.error) return { data: [], error: swipedResult.error };
-
-  const swiped = swipedResult.data;
   const selectedEventId = eventId ?? actor.event_id ?? actor.team?.event_id ?? null;
 
   if (!selectedEventId) return { data: [], error: null };
 
+  const swipedResult = await listSwipedTargets(actor, selectedEventId);
+  if (swipedResult.error) return { data: [], error: swipedResult.error };
+
+  const swiped = swipedResult.data;
+
   if (actor.type === "user") {
-    const [teamsResult, profilesResult, registrationsResult] = await Promise.all([
+    const [teamsResult, registrationsResult] = await Promise.all([
       supabase
         .from("teams")
         .select(teamColumns)
@@ -63,26 +64,24 @@ export async function listCandidates(actor, userId, eventId = null) {
         .eq("event_id", selectedEventId)
         .neq("created_by", userId)
         .limit(25),
-      supabase
-        .from("profiles")
-        .select(profileColumns)
-        .neq("user_id", userId)
-        .limit(50),
       listEventRegistrations(selectedEventId),
     ]);
 
     if (teamsResult.error) return { data: [], error: teamsResult.error };
-    if (profilesResult.error) return { data: [], error: profilesResult.error };
     if (registrationsResult.error) return { data: [], error: registrationsResult.error };
 
-    const registeredUsers = new Set((registrationsResult.data ?? []).map((row) => row.user_id));
+    const registeredUserIds = (registrationsResult.data ?? [])
+      .map((row) => row.user_id)
+      .filter((registeredUserId) => registeredUserId && registeredUserId !== userId && !swiped.userIds.has(registeredUserId));
+    const profilesResult = await listProfilesByUserIds(registeredUserIds);
+
+    if (profilesResult.error) return { data: [], error: profilesResult.error };
 
     const teams = (teamsResult.data ?? [])
       .filter((team) => !swiped.teamIds.has(team.id))
       .map((team) => ({ type: "team", id: team.id, event_id: team.event_id, team }));
 
     const profiles = (profilesResult.data ?? [])
-      .filter((profile) => profile.user_id !== userId && registeredUsers.has(profile.user_id) && !swiped.userIds.has(profile.user_id))
       .map((profile) => ({
         type: "user",
         id: profile.user_id,
@@ -96,23 +95,18 @@ export async function listCandidates(actor, userId, eventId = null) {
     };
   }
 
-  const [profilesResult, registrationsResult] = await Promise.all([
-    supabase
-      .from("profiles")
-      .select(profileColumns)
-      .neq("user_id", userId)
-      .limit(50),
-    listEventRegistrations(selectedEventId),
-  ]);
-
-  if (profilesResult.error) return { data: [], error: profilesResult.error };
+  const registrationsResult = await listEventRegistrations(selectedEventId);
   if (registrationsResult.error) return { data: [], error: registrationsResult.error };
 
-  const registeredUsers = new Set((registrationsResult.data ?? []).map((row) => row.user_id));
+  const registeredUserIds = (registrationsResult.data ?? [])
+    .map((row) => row.user_id)
+    .filter((registeredUserId) => registeredUserId && registeredUserId !== userId && !swiped.userIds.has(registeredUserId));
+  const profilesResult = await listProfilesByUserIds(registeredUserIds);
+
+  if (profilesResult.error) return { data: [], error: profilesResult.error };
 
   return {
     data: (profilesResult.data ?? [])
-      .filter((profile) => profile.user_id !== userId && registeredUsers.has(profile.user_id) && !swiped.userIds.has(profile.user_id))
       .map((profile) => ({ type: "user", id: profile.user_id, event_id: actor.team.event_id, profile })),
     error: null,
   };
@@ -248,8 +242,23 @@ async function listEventRegistrations(eventId) {
   return { data: data ?? [], error };
 }
 
-async function listSwipedTargets(actor) {
-  const query = supabase.from("swipes").select("target_user_id,target_team_id");
+async function listProfilesByUserIds(userIds) {
+  const uniqueUserIds = [...new Set(userIds)].filter(Boolean);
+  if (!supabase || uniqueUserIds.length === 0) return { data: [], error: null };
+
+  const { data, error } = await supabase
+    .from("profiles")
+    .select(profileColumns)
+    .in("user_id", uniqueUserIds)
+    .order("display_name", { ascending: true });
+
+  return { data: data ?? [], error };
+}
+
+async function listSwipedTargets(actor, eventId) {
+  let query = supabase.from("swipes").select("target_user_id,target_team_id");
+  if (eventId) query = query.eq("event_id", eventId);
+
   const { data, error } = actor.type === "user"
     ? await query.eq("actor_user_id", actor.id)
     : await query.eq("actor_team_id", actor.id);
