@@ -6,8 +6,8 @@ services:
       args:
         VITE_SUPABASE_URL: ${VITE_SUPABASE_URL:-}
         SUPABASE_PUBLIC_ANON: ${VITE_SUPABASE_ANON_KEY:-}
+        VITE_APP_MODE: participant
         VITE_ADMIN_BASE_URL: ${VITE_ADMIN_BASE_URL:-}
-        BUILD_VARIANT: web
     ports:
       - "5173:80"
 
@@ -18,8 +18,7 @@ services:
       args:
         VITE_SUPABASE_URL: ${VITE_SUPABASE_URL:-}
         SUPABASE_PUBLIC_ANON: ${VITE_SUPABASE_ANON_KEY:-}
+        VITE_APP_MODE: admin
         VITE_ADMIN_BASE_URL: ${VITE_ADMIN_BASE_URL:-}
-        BUILD_VARIANT: admin
     ports:
       - "5174:80"
-
