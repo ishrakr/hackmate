@@ -43,6 +43,13 @@ Swipe behavior:
 - Mutual interest creates a match.
 - Desktop users receive explicit skip and interested buttons.
 
+Build order 7 adds the first Supabase-backed matching flow:
+
+- Solo users marked as looking for a team can swipe through recruiting teams.
+- Recruiting teams can swipe through solo users marked as looking for a team.
+- Complete teams and users not looking for a team see a locked state instead of swipe cards.
+- Swipe left/right decisions are persisted to `swipes` and removed from the current candidate queue.
+
 Filters:
 
 - Role
@@ -65,6 +72,20 @@ Teams support:
 - Member approval.
 - QR-based joining.
 - Team chat.
+
+Build order 6 adds the first team management flow:
+
+- Authenticated users can create a team for an existing event.
+- The creator is added as an approved team member and their profile is linked to the new team.
+- Users can view their approved teams.
+- Team profiles show event, project idea, recruiting state, project links, and members.
+- Team profile editing supports name, description, project idea, GitHub, Devpost, and recruiting state.
+
+Build order 9 adds QR-based joining:
+
+- Team leads can generate a one-week join link and QR code from the team profile.
+- Raw QR tokens are shown only in the generated URL; the database stores SHA-256 token hashes.
+- `/join-team/:token` validates active tokens and creates or updates a pending join request for the signed-in user.
 
 ## Events
 

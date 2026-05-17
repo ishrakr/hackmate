@@ -456,6 +456,22 @@ h2 {
   line-height: 1.5;
 }
 
+.qr-preview {
+  display: grid;
+  gap: 0.7rem;
+  justify-items: start;
+  overflow-wrap: anywhere;
+}
+
+.qr-preview img {
+  width: 11.25rem;
+  height: 11.25rem;
+  padding: 0.5rem;
+  background: #fff;
+  border: 1px solid var(--color-border);
+  border-radius: 1rem;
+}
+
 .compact-card {
   box-shadow: none;
 }
@@ -546,6 +562,11 @@ h2 {
   background: #fff;
   border-radius: 999px;
   box-shadow: 0 16px 30px rgba(0, 0, 0, 0.2);
+}
+
+.round-action:disabled {
+  cursor: wait;
+  opacity: 0.58;
 }
 
 .round-action.reject {
