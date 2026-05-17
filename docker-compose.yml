@@ -2,37 +2,20 @@ services:
   web:
     build:
       context: .
-      target: dev
+      target: production
       args:
         VITE_SUPABASE_URL: ${VITE_SUPABASE_URL:-}
         SUPABASE_PUBLIC_ANON: ${VITE_SUPABASE_ANON_KEY:-}
     ports:
-      - "5173:5173"
-    environment:
-      CHOKIDAR_USEPOLLING: "true"
-      VITE_SUPABASE_URL: ${VITE_SUPABASE_URL:-}
-      VITE_SUPABASE_ANON_KEY: ${VITE_SUPABASE_ANON_KEY:-}
-    volumes:
-      - .:/app
-      - /app/node_modules
-    command: sh -c "npm install --prefer-offline --no-audit --no-fund && npm run dev -- --host 0.0.0.0"
+      - "5173:80"
 
   admin:
     build:
       context: .
-      target: dev
+      target: production
       args:
         VITE_SUPABASE_URL: ${VITE_SUPABASE_URL:-}
         SUPABASE_PUBLIC_ANON: ${VITE_SUPABASE_ANON_KEY:-}
         VITE_APP_MODE: admin
     ports:
-      - "5174:5174"
-    environment:
-      CHOKIDAR_USEPOLLING: "true"
-      VITE_APP_MODE: admin
-      VITE_SUPABASE_URL: ${VITE_SUPABASE_URL:-}
-      VITE_SUPABASE_ANON_KEY: ${VITE_SUPABASE_ANON_KEY:-}
-    volumes:
-      - .:/app
-      - /app/node_modules
-    command: sh -c "npm install --prefer-offline --no-audit --no-fund && npm run dev:admin"
+      - "5174:80"

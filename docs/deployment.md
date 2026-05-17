@@ -35,7 +35,15 @@ The frontend can be deployed as separate participant and admin containers from t
 - Participant container: build normally and serve the mobile app.
 - Admin container: build with `VITE_APP_MODE=admin` so the root path redirects to `/admin`.
 
-For local Docker development, `docker compose up --build` exposes the participant app on `5173` and the admin portal on `5174`.
+For Coolify/Caddy deployments, use the default `docker-compose.yml`. It builds production nginx containers and exposes container port `80` for both services. Point Coolify at the service named `web` for the participant app and `admin` for the standalone admin portal.
+
+For local Docker development with Vite hot reload, use:
+
+```sh
+docker compose -f docker-compose.dev.yml up --build
+```
+
+The dev compose file exposes the participant app on `5173` and the admin portal on `5174`. The production compose file maps those same host ports to nginx port `80` for local smoke testing.
 
 ## Monitoring Recommendations
 

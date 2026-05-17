@@ -46,10 +46,16 @@ npm install
 npm run dev
 ```
 
-Run the Docker development server with:
+Run the production-style Docker containers with:
 
 ```sh
 docker compose up --build
+```
+
+Run the Vite development containers with hot reload using:
+
+```sh
+docker compose -f docker-compose.dev.yml up --build
 ```
 
 Build for production with:
