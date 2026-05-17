@@ -78,9 +78,7 @@ const mobileAppRoute = {
   element: <MobileAppLayout />,
   errorElement: <NotFoundPage />,
   children: [
-    { index: true, element: <HomePage /> },
-    { path: "login", element: <AuthPage /> },
-    { path: "auth/callback", element: <AuthCallbackPage /> },
+    { index: true, element: <RequireAuth><HomePage /></RequireAuth> },
     { path: "onboarding", element: <RequireAuth><OnboardingPage /></RequireAuth> },
     { path: "events", element: <RequireAuth><EventsPage /></RequireAuth> },
     { path: "events/:eventId", element: <RequireAuth><EventDetailPage /></RequireAuth> },
@@ -99,6 +97,16 @@ const mobileAppRoute = {
     { path: "profile", element: <RequireAuth><ProfilePage /></RequireAuth> },
     { path: "settings", element: <RequireAuth><SettingsPage /></RequireAuth> },
     { path: "*", element: <NotFoundPage /> },
+  ],
+};
+
+const authRoute = {
+  path: "/",
+  element: <AuthLayout />,
+  errorElement: <AuthPage />,
+  children: [
+    { path: "login", element: <AuthPage /> },
+    { path: "auth/callback", element: <AuthCallbackPage /> },
   ],
 };
 
@@ -121,8 +129,18 @@ export const router = createBrowserRouter(
         standaloneAdminRoute,
         adminRoute,
       ]
-    : [mobileAppRoute, adminRoute],
+    : [authRoute, mobileAppRoute, adminRoute],
 );
+
+function AuthLayout() {
+  return (
+    <div className="auth-stage">
+      <main className="auth-shell">
+        <Outlet />
+      </main>
+    </div>
+  );
+}
 
 function MobileAppLayout() {
   const { isAuthenticated, signOut } = useAuth();
@@ -296,16 +314,23 @@ function AuthPage() {
   }
 
   return (
-    <ScreenStack>
-      <ScreenHeader
-        eyebrow="Welcome"
-        title="Sign up fast. Start building."
-        body="GitHub SSO creates your account on first login and reconnects your existing Supabase session after that."
-      />
+    <div className="auth-login-stack">
+      <Link className="auth-brand" to="/" aria-label="Hackmate home">
+        <span className="app-brand-mark">H</span>
+        <span>Hackmate</span>
+      </Link>
+      <section className="auth-hero-card">
+        <p className="card-label">Welcome</p>
+        <h1>Build your hackathon crew.</h1>
+        <p>
+          Sign in with GitHub to form teams, view events, chat live, and keep
+          your event day one thumb away.
+        </p>
+      </section>
       {!isSupabaseConfigured ? <SupabaseConfigNotice /> : null}
-      <section className="native-card action-card">
+      <section className="native-card action-card auth-login-card">
         <button
-          className="primary-action"
+          className="primary-action auth-github-action"
           disabled={!isSupabaseConfigured || Boolean(pendingProvider)}
           onClick={() => handleProviderSignIn("github")}
           type="button"
@@ -318,7 +343,7 @@ function AuthPage() {
         </p>
         {error ? <p className="auth-error" role="alert">{error}</p> : null}
       </section>
-    </ScreenStack>
+    </div>
   );
 }
 
