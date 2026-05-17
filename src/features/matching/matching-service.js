@@ -44,19 +44,39 @@ export async function listCandidates(actor, userId) {
   const swiped = swipedResult.data;
 
   if (actor.type === "user") {
-    const { data, error } = await supabase
-      .from("teams")
-      .select(teamColumns)
-      .eq("recruiting_members", true)
-      .neq("created_by", userId)
-      .limit(25);
+    const [teamsResult, profilesResult] = await Promise.all([
+      supabase
+        .from("teams")
+        .select(teamColumns)
+        .eq("recruiting_members", true)
+        .neq("created_by", userId)
+        .limit(25),
+      supabase
+        .from("profiles")
+        .select(profileColumns)
+        .or("looking_for_team.eq.true,open_to_joining_team.eq.true")
+        .neq("user_id", userId)
+        .limit(25),
+    ]);
 
-    if (error) return { data: [], error };
+    if (teamsResult.error) return { data: [], error: teamsResult.error };
+    if (profilesResult.error) return { data: [], error: profilesResult.error };
+
+    const teams = (teamsResult.data ?? [])
+      .filter((team) => !swiped.teamIds.has(team.id))
+      .map((team) => ({ type: "team", id: team.id, event_id: team.event_id, team }));
+
+    const profiles = (profilesResult.data ?? [])
+      .filter((profile) => !swiped.userIds.has(profile.user_id))
+      .map((profile) => ({
+        type: "user",
+        id: profile.user_id,
+        event_id: null,
+        profile,
+      }));
 
     return {
-      data: (data ?? [])
-        .filter((team) => !swiped.teamIds.has(team.id))
-        .map((team) => ({ type: "team", id: team.id, event_id: team.event_id, team })),
+      data: [...teams, ...profiles],
       error: null,
     };
   }
@@ -64,7 +84,7 @@ export async function listCandidates(actor, userId) {
   const { data, error } = await supabase
     .from("profiles")
     .select(profileColumns)
-    .eq("looking_for_team", true)
+    .or("looking_for_team.eq.true,open_to_joining_team.eq.true")
     .neq("user_id", userId)
     .limit(25);
 
@@ -80,9 +100,14 @@ export async function listCandidates(actor, userId) {
 
 export async function createSwipe(actor, candidate, direction) {
   if (!supabase) return { data: null, error: new Error("Supabase is not configured.") };
+  const eventId = candidate.event_id ?? actor.team?.event_id ?? await getDefaultEventId();
+
+  if (!eventId) {
+    return { data: null, error: new Error("Select an event or team before matching with this candidate.") };
+  }
 
   const payload = {
-    event_id: candidate.event_id,
+    event_id: eventId,
     direction,
     actor_user_id: actor.type === "user" ? actor.id : null,
     actor_team_id: actor.type === "team" ? actor.id : null,
@@ -93,15 +118,15 @@ export async function createSwipe(actor, candidate, direction) {
   const { data, error } = await supabase.from("swipes").insert(payload).select().single();
   if (error || direction !== "right") return { data, error };
 
-  const matchResult = await createMutualMatch(actor, candidate);
+  const matchResult = await createMutualMatch(actor, candidate, eventId);
   return { data: { swipe: data, match: matchResult.data }, error: matchResult.error };
 }
 
-async function createMutualMatch(actor, candidate) {
+async function createMutualMatch(actor, candidate, eventId) {
   const reciprocal = await findReciprocalRightSwipe(actor, candidate);
   if (reciprocal.error || !reciprocal.data) return reciprocal;
 
-  const payload = buildMatchPayload(actor, candidate);
+  const payload = buildMatchPayload(actor, candidate, eventId);
   if (!payload) return { data: null, error: null };
 
   const { data, error } = await supabase
@@ -131,10 +156,10 @@ async function findReciprocalRightSwipe(actor, candidate) {
   return { data, error };
 }
 
-function buildMatchPayload(actor, candidate) {
+function buildMatchPayload(actor, candidate, eventId) {
   if (actor.type === "user" && candidate.type === "team") {
     return {
-      event_id: candidate.event_id,
+      event_id: eventId,
       match_type: "user_team",
       user_a_id: actor.id,
       team_id: candidate.id,
@@ -143,7 +168,7 @@ function buildMatchPayload(actor, candidate) {
 
   if (actor.type === "team" && candidate.type === "user") {
     return {
-      event_id: candidate.event_id,
+      event_id: eventId,
       match_type: "user_team",
       user_a_id: candidate.id,
       team_id: actor.id,
@@ -152,7 +177,7 @@ function buildMatchPayload(actor, candidate) {
 
   if (actor.type === "user" && candidate.type === "user") {
     return {
-      event_id: candidate.event_id,
+      event_id: eventId,
       match_type: "user_user",
       user_a_id: actor.id,
       user_b_id: candidate.id,
@@ -160,6 +185,19 @@ function buildMatchPayload(actor, candidate) {
   }
 
   return null;
+}
+
+async function getDefaultEventId() {
+  const { data, error } = await supabase
+    .from("events")
+    .select("id")
+    .neq("registration_status", "draft")
+    .order("starts_at", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) return null;
+  return data?.id ?? null;
 }
 
 async function listSwipedTargets(actor) {

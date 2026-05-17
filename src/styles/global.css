@@ -61,22 +61,6 @@ button {
   place-items: stretch center;
 }
 
-.auth-stage {
-  display: grid;
-  min-height: 100svh;
-  padding: calc(env(safe-area-inset-top, 0px) + 1rem) 1rem calc(env(safe-area-inset-bottom, 0px) + 1rem);
-  place-items: center;
-}
-
-.auth-shell {
-  width: min(100%, 430px);
-}
-
-.auth-login-stack {
-  display: grid;
-  gap: 1rem;
-}
-
 .auth-brand {
   display: inline-flex;
   gap: 0.65rem;
@@ -88,32 +72,28 @@ button {
   letter-spacing: -0.04em;
 }
 
+.auth-phone-shell {
+  grid-template-rows: 1fr;
+}
+
+.auth-screen-shell {
+  display: grid;
+  align-content: center;
+  padding-top: calc(env(safe-area-inset-top, 0px) + 1rem);
+  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 1rem);
+}
+
 .auth-hero-card {
   display: grid;
   gap: 0.85rem;
-  min-height: 22rem;
-  align-content: end;
-  padding: 1.35rem;
-  color: #fff;
-  background:
-    linear-gradient(180deg, rgba(18, 24, 38, 0.02), rgba(18, 24, 38, 0.78)),
-    radial-gradient(circle at 80% 0%, rgba(16, 168, 143, 0.78), transparent 15rem),
-    linear-gradient(145deg, #2532aa, #3457f5 55%, #111827);
-  border-radius: 2rem;
-  box-shadow: var(--shadow-phone);
+  min-height: 18rem;
+  align-content: space-between;
 }
 
 .auth-hero-card h1 {
-  max-width: 10ch;
+  max-width: 11ch;
   margin-bottom: 0;
-  font-size: clamp(2.8rem, 16vw, 4.25rem);
-}
-
-.auth-hero-card p:not(.card-label) {
-  max-width: 27rem;
-  margin-bottom: 0;
-  color: rgba(255, 255, 255, 0.84);
-  line-height: 1.5;
+  font-size: clamp(2.45rem, 13vw, 3.55rem);
 }
 
 .auth-login-card {

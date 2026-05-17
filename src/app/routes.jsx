@@ -134,10 +134,12 @@ export const router = createBrowserRouter(
 
 function AuthLayout() {
   return (
-    <div className="auth-stage">
-      <main className="auth-shell">
-        <Outlet />
-      </main>
+    <div className="native-stage">
+      <div className="phone-shell auth-phone-shell">
+        <main className="screen-shell standalone-screen auth-screen-shell">
+          <Outlet />
+        </main>
+      </div>
     </div>
   );
 }
@@ -314,12 +316,12 @@ function AuthPage() {
   }
 
   return (
-    <div className="auth-login-stack">
-      <Link className="auth-brand" to="/" aria-label="Hackmate home">
-        <span className="app-brand-mark">H</span>
-        <span>Hackmate</span>
-      </Link>
-      <section className="auth-hero-card">
+    <ScreenStack>
+      <section className="hero-card auth-hero-card">
+        <Link className="auth-brand" to="/" aria-label="Hackmate home">
+          <span className="app-brand-mark">H</span>
+          <span>Hackmate</span>
+        </Link>
         <p className="card-label">Welcome</p>
         <h1>Build your hackathon crew.</h1>
         <p>
@@ -343,7 +345,7 @@ function AuthPage() {
         </p>
         {error ? <p className="auth-error" role="alert">{error}</p> : null}
       </section>
-    </div>
+    </ScreenStack>
   );
 }
 
@@ -1019,7 +1021,7 @@ function MatchPage() {
       {status === "idle" && actor && !candidate ? (
         <EmptyCard
           title="No candidates right now."
-          body="You have reviewed the current eligible pool. New people and recruiting teams will appear here."
+          body="Invite more builders to set themselves as looking for a team, or create a recruiting team so Hackmate can suggest more matches."
         />
       ) : null}
       {candidate ? (
