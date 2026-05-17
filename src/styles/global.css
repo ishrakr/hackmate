@@ -61,39 +61,45 @@ button {
   place-items: stretch center;
 }
 
-.auth-brand {
-  display: inline-flex;
-  gap: 0.65rem;
-  align-items: center;
-  width: fit-content;
-  color: #fff;
-  font-weight: 900;
-  text-decoration: none;
-  letter-spacing: -0.04em;
-}
-
 .auth-phone-shell {
   grid-template-rows: 1fr;
 }
 
 .auth-screen-shell {
   display: grid;
-  align-content: center;
-  padding-top: calc(env(safe-area-inset-top, 0px) + 1rem);
-  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 1rem);
+  align-content: stretch;
+  padding: calc(env(safe-area-inset-top, 0px) + 0.9rem) 0.9rem calc(env(safe-area-inset-bottom, 0px) + 0.9rem);
 }
 
-.auth-hero-card {
+.login-page-stack {
   display: grid;
-  gap: 0.85rem;
-  min-height: 18rem;
-  align-content: space-between;
+  min-height: 100%;
+  align-content: center;
 }
 
-.auth-hero-card h1 {
-  max-width: 11ch;
+.login-card {
+  display: grid;
+  gap: 1rem;
+  min-height: min(34rem, calc(100svh - 1.8rem));
+  align-content: center;
+  padding: 1.2rem;
+}
+
+.login-card h1 {
+  max-width: 10ch;
   margin-bottom: 0;
-  font-size: clamp(2.45rem, 13vw, 3.55rem);
+  font-size: clamp(2.7rem, 14vw, 4rem);
+}
+
+.auth-brand {
+  display: inline-flex;
+  gap: 0.65rem;
+  align-items: center;
+  width: fit-content;
+  color: var(--color-ink);
+  font-weight: 900;
+  text-decoration: none;
+  letter-spacing: -0.04em;
 }
 
 .auth-login-card {

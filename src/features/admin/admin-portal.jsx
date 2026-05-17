@@ -8,7 +8,7 @@ import {
   useNavigate,
   useParams,
 } from "react-router-dom";
-import { useAuth } from "../auth/auth-context.jsx";
+import { consumeOAuthFlow, useAuth } from "../auth/auth-context.jsx";
 import {
   getAdminDashboardMetrics,
   getAdminEvent,
@@ -897,6 +897,7 @@ function AdminSignInPage({ nextPath }) {
       {
         callbackOrigin: getAdminCallbackOrigin(),
         callbackPath: getAdminCallbackPath(),
+        mode: "admin",
       },
     );
 
@@ -956,6 +957,7 @@ export function AdminAuthCallbackPage() {
   }
 
   if (!isLoading && isAuthenticated) {
+    consumeOAuthFlow();
     return <Navigate replace to={nextPath} />;
   }
 

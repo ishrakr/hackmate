@@ -5,6 +5,8 @@ import {
 } from "../../lib/supabase/client.js";
 import { listCurrentUserRoles } from "../admin/admin-service.js";
 
+const oauthFlowStorageKey = "hackmate.oauth.flow";
+
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
@@ -98,6 +100,16 @@ export function AuthProvider({ children }) {
     const callbackUrl = new URL(callbackPath, callbackOrigin);
     callbackUrl.searchParams.set("next", nextPath);
 
+    const flow = {
+      callbackPath,
+      nextPath,
+      mode: optionsOverride.mode || "participant",
+      redirectTo: callbackUrl.toString(),
+      startedAt: Date.now(),
+    };
+
+    window.sessionStorage.setItem(oauthFlowStorageKey, JSON.stringify(flow));
+
     const options = { redirectTo: callbackUrl.toString() };
 
     if (provider === "github") {
@@ -144,6 +156,30 @@ export function AuthProvider({ children }) {
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+}
+
+export function consumeOAuthFlow() {
+  const raw = window.sessionStorage.getItem(oauthFlowStorageKey);
+  if (!raw) return null;
+
+  window.sessionStorage.removeItem(oauthFlowStorageKey);
+
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+}
+
+export function peekOAuthFlow() {
+  const raw = window.sessionStorage.getItem(oauthFlowStorageKey);
+  if (!raw) return null;
+
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
 }
 
 export function useAuth() {

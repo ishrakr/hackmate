@@ -8,7 +8,11 @@ import {
   useLocation,
   useParams,
 } from "react-router-dom";
-import { useAuth } from "../features/auth/auth-context.jsx";
+import {
+  consumeOAuthFlow,
+  peekOAuthFlow,
+  useAuth,
+} from "../features/auth/auth-context.jsx";
 import { ChatRoom, SupportChatRoom } from "../features/chat/ChatRoom.jsx";
 import { EventChatbot } from "../features/chat/EventChatbot.jsx";
 import {
@@ -293,13 +297,11 @@ function AuthPage() {
 
   if (isAuthenticated) {
     return (
-      <ScreenStack>
-        <ScreenHeader
-          eyebrow="Signed in"
-          title="You are ready to build."
-          body="Your Supabase session is active and protected app routes are unlocked."
-        />
-        <section className="native-card action-card">
+      <div className="login-page-stack">
+        <section className="native-card action-card login-card">
+          <p className="card-label">Signed in</p>
+          <h1>You are ready to build.</h1>
+          <p>Your Supabase session is active and protected app routes are unlocked.</p>
           <p className="auth-identity">
             <strong>{getUserDisplayName(user)}</strong>
             <span>{user?.email ?? "OAuth account"}</span>
@@ -317,26 +319,23 @@ function AuthPage() {
           </button>
           {error ? <p className="auth-error" role="alert">{error}</p> : null}
         </section>
-      </ScreenStack>
+      </div>
     );
   }
 
   return (
-    <ScreenStack>
-      <section className="hero-card auth-hero-card">
+    <div className="login-page-stack">
+      <section className="native-card login-card">
         <Link className="auth-brand" to="/" aria-label="Hackmate home">
           <span className="app-brand-mark">H</span>
           <span>Hackmate</span>
         </Link>
-        <p className="card-label">Welcome</p>
         <h1>Build your hackathon crew.</h1>
         <p>
           Sign in with GitHub to form teams, view events, chat live, and keep
           your event day one thumb away.
         </p>
-      </section>
-      {!isSupabaseConfigured ? <SupabaseConfigNotice /> : null}
-      <section className="native-card action-card auth-login-card">
+        {!isSupabaseConfigured ? <SupabaseConfigNotice /> : null}
         <button
           className="primary-action auth-github-action"
           disabled={!isSupabaseConfigured || Boolean(pendingProvider)}
@@ -351,16 +350,31 @@ function AuthPage() {
         </p>
         {error ? <p className="auth-error" role="alert">{error}</p> : null}
       </section>
-    </ScreenStack>
+    </div>
   );
 }
 
 function AuthCallbackPage() {
   const location = useLocation();
   const { error, isAuthenticated, isLoading, isSupabaseConfigured } = useAuth();
-  const nextPath = getSafeNextPath(
-    new URLSearchParams(location.search).get("next"),
-  );
+  const flow = peekOAuthFlow();
+  const nextPath = getSafeNextPath(new URLSearchParams(location.search).get("next"));
+
+  if (flow?.mode === "admin") {
+    const params = new URLSearchParams(location.search);
+
+    if (!params.get("next") && flow.nextPath) {
+      params.set("next", flow.nextPath);
+    }
+
+    const query = params.toString();
+    const callbackPath = flow.callbackPath || "/admin/auth/callback";
+    const redirectPath = callbackPath.startsWith("/admin")
+      ? `${callbackPath}${query ? `?${query}` : ""}${location.hash}`
+      : `/admin/auth/callback${query ? `?${query}` : ""}${location.hash}`;
+
+    return <Navigate replace to={redirectPath} />;
+  }
 
   if (!isSupabaseConfigured) {
     return (
@@ -373,6 +387,7 @@ function AuthCallbackPage() {
   }
 
   if (!isLoading && isAuthenticated) {
+    consumeOAuthFlow();
     return <Navigate replace to={nextPath} />;
   }
 
