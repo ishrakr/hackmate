@@ -114,7 +114,7 @@ export async function listCandidates(actor, userId, eventId = null) {
 
 export async function createSwipe(actor, candidate, direction) {
   if (!supabase) return { data: null, error: new Error("Supabase is not configured.") };
-  if (actor.type === "user" && candidate.type === "user" && actor.id === candidate.id) {
+  if (isSelfSwipe(actor, candidate)) {
     return { data: null, error: new Error("You cannot swipe on your own profile.") };
   }
 
@@ -133,11 +133,26 @@ export async function createSwipe(actor, candidate, direction) {
     target_team_id: candidate.type === "team" ? candidate.id : null,
   };
 
+  if (payload.actor_user_id && payload.actor_user_id === payload.target_user_id) {
+    return { data: null, error: new Error("You cannot swipe on your own profile.") };
+  }
+
+  if (payload.actor_team_id && payload.actor_team_id === payload.target_team_id) {
+    return { data: null, error: new Error("A team cannot swipe on itself.") };
+  }
+
   const { data, error } = await supabase.from("swipes").insert(payload).select().single();
   if (error || direction !== "right") return { data, error };
 
   const matchResult = await createMutualMatch(actor, candidate, eventId);
   return { data: { swipe: data, match: matchResult.data }, error: matchResult.error };
+}
+
+function isSelfSwipe(actor, candidate) {
+  return (
+    (actor.type === "user" && candidate.type === "user" && actor.id === candidate.id) ||
+    (actor.type === "team" && candidate.type === "team" && actor.id === candidate.id)
+  );
 }
 
 async function createMutualMatch(actor, candidate, eventId) {
