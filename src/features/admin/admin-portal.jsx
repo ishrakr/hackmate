@@ -24,7 +24,6 @@ const eventStatusOptions = ["draft", "open", "waitlist", "closed", "cancelled"];
 const registrationStatusOptions = ["Registered", "Waitlisted", "Checked in", "No-show", "Cancelled"];
 const sessionProviderOptions = ["github"];
 const adminBasePath = import.meta.env.VITE_APP_MODE === "admin" ? "" : "/admin";
-const adminCallbackOrigin = import.meta.env.VITE_ADMIN_BASE_URL || window.location.origin;
 const temporaryGithubAdmin = "ishrakr";
 
 export function RequireAdmin({ children }) {
@@ -894,7 +893,7 @@ function AdminSignInPage({ nextPath }) {
     const { error: signInError } = await signInWithProvider(
       provider,
       nextPath || adminPath(),
-      { callbackOrigin: adminCallbackOrigin },
+      { callbackOrigin: getAdminCallbackOrigin() },
     );
 
     if (signInError) {
@@ -982,6 +981,14 @@ function AdminNavLink({ children, end = false, to }) {
 function adminPath(path = "") {
   if (!path || path === "/") return adminBasePath || "/";
   return `${adminBasePath}${path}`;
+}
+
+function getAdminCallbackOrigin() {
+  if (import.meta.env.VITE_APP_MODE === "admin") {
+    return window.location.origin;
+  }
+
+  return import.meta.env.VITE_ADMIN_BASE_URL || window.location.origin;
 }
 
 function getSafeAdminPath(value) {
