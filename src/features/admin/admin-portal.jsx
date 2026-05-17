@@ -22,8 +22,9 @@ import {
 
 const eventStatusOptions = ["draft", "open", "waitlist", "closed", "cancelled"];
 const registrationStatusOptions = ["Registered", "Waitlisted", "Checked in", "No-show", "Cancelled"];
-const sessionProviderOptions = ["github", "discord"];
+const sessionProviderOptions = ["github"];
 const adminBasePath = import.meta.env.VITE_APP_MODE === "admin" ? "" : "/admin";
+const adminCallbackOrigin = import.meta.env.VITE_ADMIN_BASE_URL || window.location.origin;
 const temporaryGithubAdmin = "ishrakr";
 
 export function RequireAdmin({ children }) {
@@ -890,7 +891,11 @@ function AdminSignInPage({ nextPath }) {
 
   async function handleSignIn(provider) {
     setPendingProvider(provider);
-    const { error: signInError } = await signInWithProvider(provider, nextPath || adminPath());
+    const { error: signInError } = await signInWithProvider(
+      provider,
+      nextPath || adminPath(),
+      { callbackOrigin: adminCallbackOrigin },
+    );
 
     if (signInError) {
       setPendingProvider("");
@@ -918,14 +923,6 @@ function AdminSignInPage({ nextPath }) {
                     type="button"
                   >
                     {pendingProvider === "github" ? "Opening GitHub..." : "Continue with GitHub"}
-                  </button>
-                  <button
-                    className="btn btn-outline-primary btn-lg"
-                    disabled={Boolean(pendingProvider)}
-                    onClick={() => handleSignIn("discord")}
-                    type="button"
-                  >
-                    {pendingProvider === "discord" ? "Opening Discord..." : "Continue with Discord"}
                   </button>
                 </div>
                 {error ? <div className="alert alert-danger mt-4 mb-0">{error}</div> : null}

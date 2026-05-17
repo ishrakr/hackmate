@@ -11,7 +11,7 @@ The app must prioritize stability, native-mobile UX patterns, accessibility, and
 - Docker for local development and deployment packaging.
 - OpenStreetMap for event maps and parking information.
 - Bootstrap for the dedicated admin portal.
-- GitHub and Discord SSO for authentication.
+- GitHub SSO for authentication.
 
 ## Required Capabilities
 

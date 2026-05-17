@@ -2,7 +2,7 @@
 
 ## Authentication
 
-Hackmate uses Supabase Auth with GitHub and Discord SSO.
+Hackmate uses Supabase Auth with GitHub SSO.
 
 Requirements:
 

@@ -4,7 +4,6 @@
 
 - Production Supabase project.
 - Configured GitHub OAuth provider.
-- Configured Discord OAuth provider.
 - Production environment variables.
 - HTTPS-enabled app domain.
 - Docker image or platform-native frontend deployment.

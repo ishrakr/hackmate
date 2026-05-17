@@ -42,7 +42,6 @@ Test Supabase interactions for:
 ## Manual QA Checklist
 
 - GitHub login works.
-- Discord login works.
 - New users can complete onboarding.
 - New users can select existing members as their team or choose looking for team.
 - Swipe is hidden for users who already have a team that is not recruiting.

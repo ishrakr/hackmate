@@ -23,7 +23,7 @@ Hackmate is a mobile-first hackathon companion web application for participants,
 - Maps: OpenStreetMap
 - Containerization: Docker
 - Admin portal UI: Bootstrap
-- SSO providers: GitHub and Discord
+- SSO provider: GitHub
 
 ## Documentation
 

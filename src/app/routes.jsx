@@ -312,14 +312,6 @@ function AuthPage() {
         >
           {pendingProvider === "github" ? "Opening GitHub..." : "Sign up with GitHub"}
         </button>
-        <button
-          className="secondary-action"
-          disabled={!isSupabaseConfigured || Boolean(pendingProvider)}
-          onClick={() => handleProviderSignIn("discord")}
-          type="button"
-        >
-          {pendingProvider === "discord" ? "Opening Discord..." : "Continue with Discord"}
-        </button>
         <p className="fine-print">
           First-time GitHub users are signed up automatically when Supabase Auth
           signups are enabled. Returning users are signed back in.

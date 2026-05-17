@@ -8,7 +8,7 @@ Hackmate uses a React frontend connected to Supabase for authentication, databas
 
 - React application: native-app-like participant, team, event, chat, and profile UI.
 - Bootstrap admin portal: admin-specific event creation, participant lists, users, sessions, and audit tables.
-- Supabase Auth: GitHub and Discord SSO.
+- Supabase Auth: GitHub SSO.
 - Supabase Postgres: application data.
 - Supabase Realtime: chat, announcements, and selected live updates.
 - Supabase Row Level Security: authorization at the database layer.

@@ -47,7 +47,7 @@ Hackmate is a hackathon operating platform for participants, teams, organizers, 
 
 ## Primary User Flows
 
-1. User signs in with GitHub or Discord.
+1. User signs in with GitHub.
 2. User completes onboarding and creates a participant profile.
 3. User selects existing members as their team or marks themselves as looking for a team.
 4. User browses upcoming hackathons created in the admin portal.

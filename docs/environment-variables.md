@@ -10,11 +10,10 @@ Use `.env.example` as the local template, then restart Vite after changing any `
 VITE_SUPABASE_URL=
 VITE_SUPABASE_ANON_KEY=
 VITE_APP_MODE=
+VITE_ADMIN_BASE_URL=
 SUPABASE_SERVICE_ROLE_KEY=
 GITHUB_CLIENT_ID=
 GITHUB_CLIENT_SECRET=
-DISCORD_CLIENT_ID=
-DISCORD_CLIENT_SECRET=
 LLM_API_KEY=
 LLM_PROVIDER=
 APP_BASE_URL=
@@ -26,11 +25,10 @@ QR_TOKEN_SECRET=
 - `VITE_SUPABASE_URL`: Public Supabase project URL used by the frontend.
 - `VITE_SUPABASE_ANON_KEY`: Public Supabase anon key used by the frontend with RLS.
 - `VITE_APP_MODE`: Optional frontend mode. Set to `admin` for the separate admin container so `/` redirects into the admin portal.
+- `VITE_ADMIN_BASE_URL`: Public admin portal origin used for admin OAuth redirects, for example `https://admin.example.com`.
 - `SUPABASE_SERVICE_ROLE_KEY`: Private key for trusted backend operations only.
 - `GITHUB_CLIENT_ID`: GitHub OAuth app client ID.
 - `GITHUB_CLIENT_SECRET`: GitHub OAuth app client secret.
-- `DISCORD_CLIENT_ID`: Discord OAuth app client ID.
-- `DISCORD_CLIENT_SECRET`: Discord OAuth app client secret.
 - `LLM_API_KEY`: API key for the selected LLM provider.
 - `LLM_PROVIDER`: Identifier for the configured LLM backend.
 - `APP_BASE_URL`: Base URL used for redirects and QR links.
@@ -45,7 +43,7 @@ http://localhost:5173/auth/callback
 http://localhost:5174/auth/callback
 ```
 
-Production deployments should add the deployed participant and admin URLs with the same `/auth/callback` path.
+Production deployments should add the deployed participant and admin URLs with the same `/auth/callback` path. Set `VITE_ADMIN_BASE_URL` on the admin container to the exact public admin origin behind Coolify/Caddy.
 
 ## GitHub Signup
 

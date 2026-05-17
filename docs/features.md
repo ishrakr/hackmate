@@ -3,7 +3,6 @@
 ## Authentication
 
 - GitHub SSO.
-- Discord SSO.
 - Protected routes.
 - User role resolution after login.
 

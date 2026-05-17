@@ -91,7 +91,75 @@ export async function createSwipe(actor, candidate, direction) {
   };
 
   const { data, error } = await supabase.from("swipes").insert(payload).select().single();
+  if (error || direction !== "right") return { data, error };
+
+  const matchResult = await createMutualMatch(actor, candidate);
+  return { data: { swipe: data, match: matchResult.data }, error: matchResult.error };
+}
+
+async function createMutualMatch(actor, candidate) {
+  const reciprocal = await findReciprocalRightSwipe(actor, candidate);
+  if (reciprocal.error || !reciprocal.data) return reciprocal;
+
+  const payload = buildMatchPayload(actor, candidate);
+  if (!payload) return { data: null, error: null };
+
+  const { data, error } = await supabase
+    .from("matches")
+    .insert(payload)
+    .select()
+    .single();
+
+  if (error?.code === "23505") return { data: null, error: null };
   return { data, error };
+}
+
+async function findReciprocalRightSwipe(actor, candidate) {
+  let query = supabase.from("swipes").select("id").eq("direction", "right").limit(1);
+
+  if (actor.type === "user" && candidate.type === "team") {
+    query = query.eq("actor_team_id", candidate.id).eq("target_user_id", actor.id);
+  } else if (actor.type === "team" && candidate.type === "user") {
+    query = query.eq("actor_user_id", candidate.id).eq("target_team_id", actor.id);
+  } else if (actor.type === "user" && candidate.type === "user") {
+    query = query.eq("actor_user_id", candidate.id).eq("target_user_id", actor.id);
+  } else {
+    return { data: null, error: null };
+  }
+
+  const { data, error } = await query.maybeSingle();
+  return { data, error };
+}
+
+function buildMatchPayload(actor, candidate) {
+  if (actor.type === "user" && candidate.type === "team") {
+    return {
+      event_id: candidate.event_id,
+      match_type: "user_team",
+      user_a_id: actor.id,
+      team_id: candidate.id,
+    };
+  }
+
+  if (actor.type === "team" && candidate.type === "user") {
+    return {
+      event_id: candidate.event_id,
+      match_type: "user_team",
+      user_a_id: candidate.id,
+      team_id: actor.id,
+    };
+  }
+
+  if (actor.type === "user" && candidate.type === "user") {
+    return {
+      event_id: candidate.event_id,
+      match_type: "user_user",
+      user_a_id: actor.id,
+      user_b_id: candidate.id,
+    };
+  }
+
+  return null;
 }
 
 async function listSwipedTargets(actor) {

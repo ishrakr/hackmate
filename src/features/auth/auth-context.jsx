@@ -82,7 +82,7 @@ export function AuthProvider({ children }) {
     };
   }, [session?.user?.id]);
 
-  async function signInWithProvider(provider, nextPath = "/onboarding") {
+  async function signInWithProvider(provider, nextPath = "/onboarding", optionsOverride = {}) {
     if (!supabase) {
       const configError = new Error(
         "Supabase is not configured. Add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.",
@@ -93,7 +93,8 @@ export function AuthProvider({ children }) {
 
     setError("");
 
-    const callbackUrl = new URL("/auth/callback", window.location.origin);
+    const callbackOrigin = optionsOverride.callbackOrigin || window.location.origin;
+    const callbackUrl = new URL("/auth/callback", callbackOrigin);
     callbackUrl.searchParams.set("next", nextPath);
 
     const options = { redirectTo: callbackUrl.toString() };
