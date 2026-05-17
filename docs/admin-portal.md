@@ -6,6 +6,7 @@ The admin portal is a dedicated Bootstrap-based interface for operational and se
 
 - Separate admin layout.
 - Bootstrap UI components.
+- Standalone Bootstrap sign-in and operations shell, separate from the mobile participant layout.
 - Admin-only route protection.
 - Server-side authorization checks.
 - Pagination for large tables.
@@ -27,6 +28,14 @@ The admin portal is a dedicated Bootstrap-based interface for operational and se
 /admin/sessions
 /admin/audit-logs
 ```
+
+Local standalone admin development runs on `5174` with `/` as the admin dashboard root:
+
+```sh
+npm run dev:admin
+```
+
+Docker Compose exposes the same standalone admin portal on `http://localhost:5174`. In standalone admin mode, routes are `/`, `/events`, `/events/new`, `/users`, `/sessions`, and `/audit-logs`; the combined participant app still supports `/admin/...` routes.
 
 ## Event Management
 

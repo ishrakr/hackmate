@@ -30,10 +30,12 @@ import {
   upsertProfile,
 } from "../features/profiles/profile-service.js";
 import {
+  AdminAuthCallbackPage,
   AdminDashboardPage,
   AdminEventEditorPage,
   AdminEventsPage,
   AdminLayout,
+  AdminNotFoundPage,
   AdminParticipantsPage,
   AdminTablePage,
   RequireAdmin,
@@ -59,12 +61,24 @@ const bottomTabs = [
 const sampleMembers = ["Alex", "Mina", "Jordan"];
 const isAdminContainer = import.meta.env.VITE_APP_MODE === "admin";
 
+const adminRouteChildren = [
+  { index: true, element: <AdminDashboardPage /> },
+  { path: "events", element: <AdminEventsPage /> },
+  { path: "events/new", element: <AdminEventEditorPage /> },
+  { path: "events/:eventId/edit", element: <AdminEventEditorPage /> },
+  { path: "events/:eventId/participants", element: <AdminParticipantsPage /> },
+  { path: "users", element: <AdminTablePage resource="users" title="Users" /> },
+  { path: "sessions", element: <AdminTablePage resource="sessions" title="Sessions" /> },
+  { path: "audit-logs", element: <AdminTablePage resource="audit-logs" title="Audit Logs" /> },
+  { path: "*", element: <AdminNotFoundPage /> },
+];
+
 const mobileAppRoute = {
   path: "/",
   element: <MobileAppLayout />,
   errorElement: <NotFoundPage />,
   children: [
-    { index: true, element: isAdminContainer ? <Navigate replace to="/admin" /> : <HomePage /> },
+    { index: true, element: <HomePage /> },
     { path: "login", element: <AuthPage /> },
     { path: "auth/callback", element: <AuthCallbackPage /> },
     { path: "onboarding", element: <RequireAuth><OnboardingPage /></RequireAuth> },
@@ -91,22 +105,24 @@ const mobileAppRoute = {
 const adminRoute = {
   path: "/admin",
   element: <RequireAdmin><AdminLayout /></RequireAdmin>,
-  children: [
-    { index: true, element: <AdminDashboardPage /> },
-    { path: "events", element: <AdminEventsPage /> },
-    { path: "events/new", element: <AdminEventEditorPage /> },
-    { path: "events/:eventId/edit", element: <AdminEventEditorPage /> },
-    { path: "events/:eventId/participants", element: <AdminParticipantsPage /> },
-    { path: "users", element: <AdminTablePage resource="users" title="Users" /> },
-    { path: "sessions", element: <AdminTablePage resource="sessions" title="Sessions" /> },
-    { path: "audit-logs", element: <AdminTablePage resource="audit-logs" title="Audit Logs" /> },
-  ],
+  children: adminRouteChildren,
 };
 
-export const router = createBrowserRouter([
-  mobileAppRoute,
-  adminRoute,
-]);
+const standaloneAdminRoute = {
+  path: "/",
+  element: <RequireAdmin><AdminLayout /></RequireAdmin>,
+  children: adminRouteChildren,
+};
+
+export const router = createBrowserRouter(
+  isAdminContainer
+    ? [
+        { path: "/auth/callback", element: <AdminAuthCallbackPage /> },
+        standaloneAdminRoute,
+        adminRoute,
+      ]
+    : [mobileAppRoute, adminRoute],
+);
 
 function MobileAppLayout() {
   const { isAuthenticated, signOut } = useAuth();

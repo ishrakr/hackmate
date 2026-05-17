@@ -935,7 +935,36 @@ h2 {
 
 .admin-shell {
   min-height: 100vh;
+  color: #212529;
+  font-family: var(--bs-body-font-family, system-ui, -apple-system, "Segoe UI", sans-serif);
   background: #f7f8fb;
+}
+
+.admin-shell h1,
+.admin-shell h2,
+.admin-shell h3,
+.admin-shell h4,
+.admin-shell h5,
+.admin-shell h6,
+.admin-shell p {
+  max-width: none;
+  letter-spacing: normal;
+}
+
+.admin-shell h1,
+.admin-shell h2 {
+  line-height: var(--bs-body-line-height, 1.2);
+}
+
+.admin-shell .display-6 {
+  line-height: 1.2;
+}
+
+.admin-auth-shell {
+  display: block;
+  background:
+    radial-gradient(circle at top left, rgba(13, 110, 253, 0.16), transparent 28rem),
+    #f7f8fb;
 }
 
 .admin-sidebar {

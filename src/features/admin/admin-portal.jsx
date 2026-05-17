@@ -23,6 +23,8 @@ import {
 const eventStatusOptions = ["draft", "open", "waitlist", "closed", "cancelled"];
 const registrationStatusOptions = ["Registered", "Waitlisted", "Checked in", "No-show", "Cancelled"];
 const sessionProviderOptions = ["github", "discord"];
+const adminBasePath = import.meta.env.VITE_APP_MODE === "admin" ? "" : "/admin";
+const temporaryGithubAdmin = "ishrakr";
 
 export function RequireAdmin({ children }) {
   const location = useLocation();
@@ -35,6 +37,7 @@ export function RequireAdmin({ children }) {
     roles,
     user,
   } = useAuth();
+  const nextPath = `${location.pathname}${location.search}${location.hash}`;
 
   if (isLoading || isResolvingRoles) {
     return (
@@ -57,15 +60,15 @@ export function RequireAdmin({ children }) {
   }
 
   if (!isAuthenticated) {
-    return <Navigate replace state={{ from: location }} to="/login" />;
+    return <AdminSignInPage nextPath={nextPath} />;
   }
 
-  if (!roles.includes("admin")) {
+  if (!roles.includes("admin") && !isTemporaryGithubAdmin(user)) {
     return (
       <AdminGatePage
         eyebrow="Admin"
         title="Admin access required."
-        body={`Signed in as ${user?.email ?? "this user"} with role ${role ?? "none"}. Add an admin role in Supabase metadata or the user_roles table before using this portal.`}
+        body={`Signed in as ${user?.email ?? "this user"} with role ${role ?? "none"}. For now, only GitHub user ${temporaryGithubAdmin} can use this portal.`}
       />
     );
   }
@@ -87,7 +90,7 @@ export function AdminLayout() {
     <div className="admin-shell">
       <aside className="admin-sidebar">
         <div className="admin-sidebar-top">
-          <Link className="admin-brand" to="/admin">
+          <Link className="admin-brand" to={adminPath()}>
             <span className="app-brand-mark">H</span>
             <span>Hackmate Admin</span>
           </Link>
@@ -97,12 +100,12 @@ export function AdminLayout() {
         </div>
 
         <nav className="nav flex-column gap-2" aria-label="Admin navigation">
-          <AdminNavLink to="/admin">Overview</AdminNavLink>
-          <AdminNavLink to="/admin/events">Events</AdminNavLink>
-          <AdminNavLink to="/admin/events/new">Create Event</AdminNavLink>
-          <AdminNavLink to="/admin/users">Users</AdminNavLink>
-          <AdminNavLink to="/admin/sessions">Sessions</AdminNavLink>
-          <AdminNavLink to="/admin/audit-logs">Audit Logs</AdminNavLink>
+          <AdminNavLink end to={adminPath()}>Overview</AdminNavLink>
+          <AdminNavLink to={adminPath("/events")}>Events</AdminNavLink>
+          <AdminNavLink to={adminPath("/events/new")}>Create Event</AdminNavLink>
+          <AdminNavLink to={adminPath("/users")}>Users</AdminNavLink>
+          <AdminNavLink to={adminPath("/sessions")}>Sessions</AdminNavLink>
+          <AdminNavLink to={adminPath("/audit-logs")}>Audit Logs</AdminNavLink>
         </nav>
 
         <div className="admin-sidebar-footer">
@@ -111,9 +114,11 @@ export function AdminLayout() {
             <span>{user?.email ?? "Authenticated admin"}</span>
           </div>
           <div className="d-grid gap-2">
-            <Link className="btn btn-outline-light" to="/">
-              Back to App
-            </Link>
+            {import.meta.env.VITE_APP_MODE === "admin" ? null : (
+              <Link className="btn btn-outline-light" to="/">
+                Back to App
+              </Link>
+            )}
             <button
               className="btn btn-light"
               disabled={isSigningOut}
@@ -192,7 +197,7 @@ export function AdminDashboardPage() {
                   <p className="text-uppercase text-secondary fw-semibold small mb-2">Recent events</p>
                   <h2 className="h4 mb-0">Latest hackathons</h2>
                 </div>
-                <Link className="btn btn-sm btn-outline-primary" to="/admin/events">
+                <Link className="btn btn-sm btn-outline-primary" to={adminPath("/events")}>
                   View all
                 </Link>
               </div>
@@ -228,7 +233,7 @@ export function AdminDashboardPage() {
                   <p className="text-uppercase text-secondary fw-semibold small mb-2">Recent audit activity</p>
                   <h2 className="h4 mb-0">Security and change log</h2>
                 </div>
-                <Link className="btn btn-sm btn-outline-primary" to="/admin/audit-logs">
+                <Link className="btn btn-sm btn-outline-primary" to={adminPath("/audit-logs")}>
                   Open logs
                 </Link>
               </div>
@@ -304,7 +309,7 @@ export function AdminEventsPage() {
         title="Manage hackathons"
         body="Create and edit event records, adjust registration state, and jump straight into participant operations."
         action={
-          <Link className="btn btn-primary" to="/admin/events/new">
+          <Link className="btn btn-primary" to={adminPath("/events/new")}>
             Create event
           </Link>
         }
@@ -366,10 +371,10 @@ export function AdminEventsPage() {
                   </td>
                   <td>
                     <div className="d-flex flex-wrap gap-2">
-                      <Link className="btn btn-sm btn-outline-primary" to={`/admin/events/${event.id}/edit`}>
+                      <Link className="btn btn-sm btn-outline-primary" to={adminPath(`/events/${event.id}/edit`)}>
                         Edit
                       </Link>
-                      <Link className="btn btn-sm btn-outline-secondary" to={`/admin/events/${event.id}/participants`}>
+                      <Link className="btn btn-sm btn-outline-secondary" to={adminPath(`/events/${event.id}/participants`)}>
                         Participants
                       </Link>
                     </div>
@@ -451,7 +456,7 @@ export function AdminEventEditorPage() {
     setStatus("idle");
 
     if (!isEditing && data?.id) {
-      navigate(`/admin/events/${data.id}/edit`, { replace: true });
+      navigate(adminPath(`/events/${data.id}/edit`), { replace: true });
     }
   }
 
@@ -463,7 +468,7 @@ export function AdminEventEditorPage() {
         body="This form controls the participant-facing event card and detail screens. Organizers can manage FAQ and schedule records after creation."
         action={
           isEditing ? (
-            <Link className="btn btn-outline-primary" to={`/admin/events/${eventId}/participants`}>
+            <Link className="btn btn-outline-primary" to={adminPath(`/events/${eventId}/participants`)}>
               View participants
             </Link>
           ) : null
@@ -590,7 +595,7 @@ export function AdminEventEditorPage() {
           </div>
 
           <div className="col-12 d-flex justify-content-end gap-2">
-            <Link className="btn btn-outline-secondary" to="/admin/events">
+            <Link className="btn btn-outline-secondary" to={adminPath("/events")}>
               Cancel
             </Link>
             <button className="btn btn-primary" disabled={status === "saving"} type="submit">
@@ -669,7 +674,7 @@ export function AdminParticipantsPage() {
         title={event?.name || "Event participants"}
         body="Review registration state, team visibility, and check-in progress for this event."
         action={
-          <Link className="btn btn-outline-primary" to={`/admin/events/${eventId}/edit`}>
+          <Link className="btn btn-outline-primary" to={adminPath(`/events/${eventId}/edit`)}>
             Edit event
           </Link>
         }
@@ -852,26 +857,162 @@ export function AdminGatePage({ eyebrow, title, body }) {
         <p className="text-uppercase fw-semibold text-secondary mb-2">{eyebrow}</p>
         <h1 className="display-6 fw-bold">{title}</h1>
         <p className="lead text-secondary">{body}</p>
-        <Link className="btn btn-primary" to="/login">
-          Open sign in
+        <Link className="btn btn-primary" to={adminPath()}>
+          Back to admin
         </Link>
       </main>
     </div>
   );
 }
 
-function AdminNavLink({ children, to }) {
+export function AdminNotFoundPage() {
+  return (
+    <section className="container-fluid py-4 py-lg-5">
+      <div className="card shadow-sm border-0">
+        <div className="card-body p-4 p-lg-5">
+          <p className="text-uppercase fw-semibold text-secondary mb-2">404</p>
+          <h1 className="display-6 fw-bold mb-3">Admin page not found</h1>
+          <p className="lead text-secondary">
+            This standalone admin app uses Bootstrap routes from the admin root.
+          </p>
+          <Link className="btn btn-primary" to={adminPath()}>
+            Open dashboard
+          </Link>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function AdminSignInPage({ nextPath }) {
+  const { error, signInWithProvider } = useAuth();
+  const [pendingProvider, setPendingProvider] = useState("");
+
+  async function handleSignIn(provider) {
+    setPendingProvider(provider);
+    const { error: signInError } = await signInWithProvider(provider, nextPath || adminPath());
+
+    if (signInError) {
+      setPendingProvider("");
+    }
+  }
+
+  return (
+    <div className="admin-shell admin-auth-shell">
+      <main className="container py-5">
+        <div className="row justify-content-center">
+          <div className="col-12 col-md-8 col-xl-5">
+            <div className="card shadow border-0">
+              <div className="card-body p-4 p-lg-5">
+                <p className="text-uppercase fw-semibold text-secondary mb-2">Admin portal</p>
+                <h1 className="display-6 fw-bold mb-3">Sign in to Hackmate Admin</h1>
+                <p className="text-secondary mb-4">
+                  This is the standalone Bootstrap operations console for events,
+                  participants, sessions, users, and audit logs.
+                </p>
+                <div className="d-grid gap-2">
+                  <button
+                    className="btn btn-primary btn-lg"
+                    disabled={Boolean(pendingProvider)}
+                    onClick={() => handleSignIn("github")}
+                    type="button"
+                  >
+                    {pendingProvider === "github" ? "Opening GitHub..." : "Continue with GitHub"}
+                  </button>
+                  <button
+                    className="btn btn-outline-primary btn-lg"
+                    disabled={Boolean(pendingProvider)}
+                    onClick={() => handleSignIn("discord")}
+                    type="button"
+                  >
+                    {pendingProvider === "discord" ? "Opening Discord..." : "Continue with Discord"}
+                  </button>
+                </div>
+                {error ? <div className="alert alert-danger mt-4 mb-0">{error}</div> : null}
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+  );
+}
+
+export function AdminAuthCallbackPage() {
+  const location = useLocation();
+  const { error, isAuthenticated, isLoading, isSupabaseConfigured } = useAuth();
+  const nextPath = getSafeAdminPath(
+    new URLSearchParams(location.search).get("next"),
+  );
+
+  if (!isSupabaseConfigured) {
+    return (
+      <AdminGatePage
+        eyebrow="Setup"
+        title="Supabase is not configured."
+        body="Add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY before completing admin sign in."
+      />
+    );
+  }
+
+  if (!isLoading && isAuthenticated) {
+    return <Navigate replace to={nextPath} />;
+  }
+
+  return (
+    <AdminGatePage
+      eyebrow="OAuth"
+      title={isLoading ? "Finishing admin sign in." : "Sign in was not completed."}
+      body={error || "Hackmate Admin is reading the Supabase Auth callback and restoring your session."}
+    />
+  );
+}
+
+function AdminNavLink({ children, end = false, to }) {
   return (
     <NavLink
       className={({ isActive }) =>
         `btn text-start ${isActive ? "btn-light text-dark" : "btn-outline-light"}`
       }
-      end={to === "/admin"}
+      end={end}
       to={to}
     >
       {children}
     </NavLink>
   );
+}
+
+function adminPath(path = "") {
+  if (!path || path === "/") return adminBasePath || "/";
+  return `${adminBasePath}${path}`;
+}
+
+function getSafeAdminPath(value) {
+  if (typeof value !== "string") return adminPath();
+  if (!value.startsWith("/") || value.startsWith("//")) return adminPath();
+  if (import.meta.env.VITE_APP_MODE === "admin" && value.startsWith("/admin")) {
+    return value.replace(/^\/admin/, "") || "/";
+  }
+
+  return value;
+}
+
+function isTemporaryGithubAdmin(user) {
+  if (!user) return false;
+
+  const providers = [
+    user.app_metadata?.provider,
+    ...(Array.isArray(user.app_metadata?.providers) ? user.app_metadata.providers : []),
+  ].filter(Boolean);
+  const usernames = [
+    user.user_metadata?.user_name,
+    user.user_metadata?.preferred_username,
+    user.user_metadata?.name,
+  ]
+    .filter(Boolean)
+    .map((value) => String(value).toLowerCase());
+
+  return providers.includes("github") && usernames.includes(temporaryGithubAdmin);
 }
 
 function AdminMetric({ label, value }) {
