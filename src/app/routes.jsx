@@ -1175,6 +1175,7 @@ function MatchPage() {
   const [candidates, setCandidates] = useState([]);
   const [candidateIndex, setCandidateIndex] = useState(0);
   const [activeCandidate, setActiveCandidate] = useState(null);
+  const [matchedCandidate, setMatchedCandidate] = useState(null);
   const [selectedEventId, setSelectedEventId] = useState(null);
   const [status, setStatus] = useState("loading");
   const [message, setMessage] = useState("");
@@ -1248,12 +1249,16 @@ function MatchPage() {
 
     setStatus("saving");
     setMessage("");
-    const { error } = await createSwipe(actor, candidate, direction);
+    const { data, error } = await createSwipe(actor, candidate, direction);
 
     if (error) {
       setMessage(error.message);
       setStatus("idle");
       return;
+    }
+
+    if (data?.match) {
+      setMatchedCandidate(candidate);
     }
 
     setCandidateIndex((current) => current + 1);
@@ -1316,6 +1321,12 @@ function MatchPage() {
       {activeCandidate ? (
         <CandidateDetailSheet candidate={activeCandidate} onClose={() => setActiveCandidate(null)} />
       ) : null}
+      {matchedCandidate ? (
+        <MatchModal
+          candidate={matchedCandidate}
+          onClose={() => setMatchedCandidate(null)}
+        />
+      ) : null}
 
       {!selectedEventId ? (
         <Link className="primary-action" to="/events">Choose an event</Link>
@@ -1324,10 +1335,44 @@ function MatchPage() {
   );
 }
 
+function MatchModal({ candidate, onClose }) {
+  const isTeam = candidate.type === "team";
+  const title = getCandidateTitle(candidate);
+  const subtitle = isTeam
+    ? "This team is interested too. Open the team profile to coordinate next steps."
+    : "They liked you back. Start planning what you could build together.";
+
+  return (
+    <div className="match-modal-backdrop" role="presentation" onClick={onClose}>
+      <section
+        aria-labelledby="matchModalTitle"
+        aria-modal="true"
+        className="match-modal"
+        onClick={(event) => event.stopPropagation()}
+        role="dialog"
+      >
+        <span className="match-modal-icon" aria-hidden="true">♥</span>
+        <p className="card-label">It's a match</p>
+        <h2 id="matchModalTitle">You matched with {title}.</h2>
+        <p>{subtitle}</p>
+        <button className="primary-action" onClick={onClose} type="button">
+          Keep matching
+        </button>
+      </section>
+    </div>
+  );
+}
+
+function getCandidateTitle(candidate) {
+  return candidate.type === "team"
+    ? candidate.team.name
+    : candidate.profile.display_name;
+}
+
 function MatchCard({ actor, candidate, disabled, onOpen, onSwipe }) {
   const [dragStart, setDragStart] = useState(null);
   const isTeam = candidate.type === "team";
-  const title = isTeam ? candidate.team.name : candidate.profile.display_name;
+  const title = getCandidateTitle(candidate);
   const body = isTeam
     ? candidate.team.project_idea || candidate.team.description || "Recruiting team looking for builders."
     : candidate.profile.bio || "Solo participant looking for a team.";

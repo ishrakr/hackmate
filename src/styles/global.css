@@ -1044,6 +1044,53 @@ h2 {
   animation: sheet-in 180ms ease-out;
 }
 
+.match-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  background: rgba(15, 23, 42, 0.56);
+  backdrop-filter: blur(10px);
+}
+
+.match-modal {
+  display: grid;
+  width: min(100%, 21rem);
+  gap: 0.75rem;
+  justify-items: center;
+  padding: 1.2rem;
+  text-align: center;
+  background: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  border-radius: 1.45rem;
+  box-shadow: 0 28px 72px rgba(18, 24, 38, 0.34);
+  animation: sheet-in 180ms ease-out;
+}
+
+.match-modal h2,
+.match-modal p {
+  margin-bottom: 0;
+}
+
+.match-modal h2 {
+  font-size: clamp(1.45rem, 7vw, 2rem);
+  line-height: 1.05;
+}
+
+.match-modal-icon {
+  display: grid;
+  width: 3.4rem;
+  height: 3.4rem;
+  place-items: center;
+  color: #fff;
+  font-size: 1.6rem;
+  background: linear-gradient(145deg, var(--color-primary), var(--color-accent));
+  border-radius: 999px;
+  box-shadow: 0 14px 28px rgba(52, 87, 245, 0.26);
+}
+
 .sheet-header-row {
   display: flex;
   gap: 0.8rem;
