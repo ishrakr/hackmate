@@ -8,7 +8,10 @@ import {
   useNavigate,
   useParams,
 } from "react-router-dom";
-import { consumeOAuthFlow, useAuth } from "../auth/auth-context.jsx";
+import {
+  consumeOAuthFlow,
+  useAuth,
+} from "../auth/auth-context.jsx";
 import {
   getAdminDashboardMetrics,
   getAdminEvent,
@@ -31,6 +34,7 @@ import {
   saveAdminMapMarker,
   saveAdminRoomArea,
 } from "./admin-service.js";
+import { clearAdminOAuthIntent, setAdminOAuthIntent } from "../../lib/oauth-intent.js";
 
 const eventStatusOptions = ["draft", "open", "waitlist", "closed", "cancelled"];
 const registrationStatusOptions = ["Registered", "Waitlisted", "Checked in", "No-show", "Cancelled"];
@@ -1420,15 +1424,18 @@ export function AdminNotFoundPage() {
 function AdminSignInPage({ nextPath }) {
   const { error, signInWithProvider } = useAuth();
   const [pendingProvider, setPendingProvider] = useState("");
+  const adminNextPath = nextPath || adminPath();
 
   async function handleSignIn(provider) {
     setPendingProvider(provider);
+    const adminOrigin = getAdminOrigin();
+    setAdminOAuthIntent(adminOrigin);
     const { error: signInError } = await signInWithProvider(
       provider,
-      nextPath || adminPath(),
+      adminNextPath,
       {
-        callbackOrigin: getAdminCallbackOrigin(),
-        callbackPath: getAdminCallbackPath(),
+        callbackOrigin: adminOrigin,
+        callbackPath: "/auth/callback",
         mode: "admin",
       },
     );
@@ -1490,6 +1497,7 @@ export function AdminAuthCallbackPage() {
 
   if (!isLoading && isAuthenticated) {
     consumeOAuthFlow();
+    clearAdminOAuthIntent();
     return <Navigate replace to={nextPath} />;
   }
 
@@ -1521,16 +1529,14 @@ function adminPath(path = "") {
   return `${adminBasePath}${path}`;
 }
 
-function getAdminCallbackOrigin() {
-  if (isStandaloneAdmin) {
-    return window.location.origin;
+function getAdminOrigin() {
+  const configured = import.meta.env.VITE_ADMIN_BASE_URL;
+
+  if (configured) {
+    return new URL(configured, window.location.origin).origin;
   }
 
-  return import.meta.env.VITE_ADMIN_BASE_URL || window.location.origin;
-}
-
-function getAdminCallbackPath() {
-  return isStandaloneAdmin ? "/auth/callback" : "/admin/auth/callback";
+  return window.location.origin;
 }
 
 function getSafeAdminPath(value) {

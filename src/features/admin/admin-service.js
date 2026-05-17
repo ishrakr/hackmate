@@ -144,9 +144,17 @@ export async function saveAdminEvent(eventId, payload) {
     return { data: null, error: new Error("Supabase is not configured.") };
   }
 
+  const { data: userData, error: userError } = await supabase.auth.getUser();
+  if (userError) return { data: null, error: userError };
+
+  const eventPayload = {
+    ...payload,
+    organizer_id: payload.organizer_id ?? userData.user?.id ?? null,
+  };
+
   const query = eventId
-    ? supabase.from("events").update(payload).eq("id", eventId)
-    : supabase.from("events").insert(payload);
+    ? supabase.from("events").update(eventPayload).eq("id", eventId)
+    : supabase.from("events").insert(eventPayload);
 
   const { data, error } = await query.select(eventColumns).single();
 

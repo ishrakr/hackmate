@@ -13,6 +13,7 @@ import {
   peekOAuthFlow,
   useAuth,
 } from "../features/auth/auth-context.jsx";
+import { consumeAdminOAuthIntent } from "../lib/oauth-intent.js";
 import { ChatRoom, SupportChatRoom } from "../features/chat/ChatRoom.jsx";
 import { EventChatbot } from "../features/chat/EventChatbot.jsx";
 import {
@@ -72,6 +73,7 @@ const EventMap = lazy(() =>
     default: module.EventMap,
   })),
 );
+const participantAdminRedirect = import.meta.env.VITE_ADMIN_BASE_URL || "/";
 
 const adminRouteChildren = [
   { index: true, element: <AdminDashboardPage /> },
@@ -122,17 +124,6 @@ const authRoute = {
   ],
 };
 
-const adminAuthCallbackRoute = {
-  path: "/admin/auth/callback",
-  element: <AdminAuthCallbackPage />,
-};
-
-const adminRoute = {
-  path: "/admin",
-  element: <RequireAdmin><AdminLayout /></RequireAdmin>,
-  children: adminRouteChildren,
-};
-
 const standaloneAdminRoute = {
   path: "/",
   element: <RequireAdmin><AdminLayout /></RequireAdmin>,
@@ -143,11 +134,13 @@ export const router = createBrowserRouter(
   isAdminContainer
     ? [
         { path: "/auth/callback", element: <AdminAuthCallbackPage /> },
-        { path: "/admin/auth/callback", element: <AdminAuthCallbackPage /> },
         standaloneAdminRoute,
-        adminRoute,
       ]
-    : [adminAuthCallbackRoute, authRoute, mobileAppRoute, adminRoute],
+    : [
+        { path: "/admin/*", element: <Navigate replace to={participantAdminRedirect} /> },
+        authRoute,
+        mobileAppRoute,
+      ],
 );
 
 function AuthLayout() {
@@ -367,21 +360,24 @@ function AuthCallbackPage() {
   const { error, isAuthenticated, isLoading, isSupabaseConfigured } = useAuth();
   const flow = peekOAuthFlow();
   const nextPath = getSafeNextPath(new URLSearchParams(location.search).get("next"));
+  const adminIntent = flow?.mode === "admin" ? null : consumeAdminOAuthIntent();
+
+  if (adminIntent?.adminOrigin && adminIntent.adminOrigin !== window.location.origin) {
+    const target = new URL("/auth/callback", adminIntent.adminOrigin);
+    // Use the raw browser URL values instead of React Router's location so that
+    // PKCE codes (?code=…) and implicit-flow hash tokens (#access_token=…) are
+    // forwarded to the admin origin before the local Supabase client can
+    // consume them.
+    target.search = window.location.search;
+    target.hash = window.location.hash;
+    window.location.replace(target.toString());
+    return null;
+  }
 
   if (flow?.mode === "admin") {
-    const params = new URLSearchParams(location.search);
-
-    if (!params.get("next") && flow.nextPath) {
-      params.set("next", flow.nextPath);
-    }
-
-    const query = params.toString();
-    const callbackPath = flow.callbackPath || "/admin/auth/callback";
-    const redirectPath = callbackPath.startsWith("/admin")
-      ? `${callbackPath}${query ? `?${query}` : ""}${location.hash}`
-      : `/admin/auth/callback${query ? `?${query}` : ""}${location.hash}`;
-
-    return <Navigate replace to={redirectPath} />;
+    consumeOAuthFlow();
+    window.location.replace(import.meta.env.VITE_ADMIN_BASE_URL || adminIntent?.adminOrigin || "/");
+    return null;
   }
 
   if (!isSupabaseConfigured) {
