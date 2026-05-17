@@ -1084,14 +1084,16 @@ h2 {
   width: 3.4rem;
   height: 3.4rem;
   place-items: center;
-  color: #fff;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
-  font-size: 1.45rem;
-  font-weight: 950;
-  letter-spacing: -0.14em;
-  background: linear-gradient(145deg, var(--color-primary), var(--color-accent));
+  padding: 0.45rem;
+  background: #fff;
   border-radius: 999px;
   box-shadow: 0 14px 28px rgba(52, 87, 245, 0.26);
+}
+
+.match-modal-icon img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
 }
 
 .sheet-header-row {

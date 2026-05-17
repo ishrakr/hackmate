@@ -1339,8 +1339,8 @@ function MatchModal({ candidate, onClose }) {
   const isTeam = candidate.type === "team";
   const title = getCandidateTitle(candidate);
   const subtitle = isTeam
-    ? "This team is interested too. Open the team profile to coordinate next steps."
-    : "They liked you back. Start planning what you could build together.";
+    ? "You have been added to their team. You can now see each other and coordinate next steps."
+    : "You are now in a team together. You can see each other and start planning what to build.";
 
   return (
     <div className="match-modal-backdrop" role="presentation" onClick={onClose}>
@@ -1351,7 +1351,9 @@ function MatchModal({ candidate, onClose }) {
         onClick={(event) => event.stopPropagation()}
         role="dialog"
       >
-        <span className="match-modal-icon" aria-hidden="true">{`{}`}</span>
+        <span className="match-modal-icon" aria-hidden="true">
+          <img src="/brand/hackmate-logo.png" alt="" />
+        </span>
         <p className="card-label">It's a match</p>
         <h2 id="matchModalTitle">You matched with {title}.</h2>
         <p>{subtitle}</p>
