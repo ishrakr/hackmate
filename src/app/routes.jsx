@@ -65,48 +65,53 @@ const sampleEvents = [
 ];
 
 const sampleMembers = ["Alex", "Mina", "Jordan"];
+const isAdminContainer = import.meta.env.VITE_APP_MODE === "admin";
+
+const mobileAppRoute = {
+  path: "/",
+  element: <MobileAppLayout />,
+  errorElement: <NotFoundPage />,
+  children: [
+    { index: true, element: isAdminContainer ? <Navigate replace to="/admin" /> : <HomePage /> },
+    { path: "login", element: <AuthPage /> },
+    { path: "auth/callback", element: <AuthCallbackPage /> },
+    { path: "onboarding", element: <RequireAuth><OnboardingPage /></RequireAuth> },
+    { path: "events", element: <RequireAuth><EventsPage /></RequireAuth> },
+    { path: "events/:eventId", element: <RequireAuth><EventDetailPage /></RequireAuth> },
+    { path: "events/:eventId/map", element: <RequireAuth><EventSubPage title="Map and Parking" /></RequireAuth> },
+    { path: "events/:eventId/schedule", element: <RequireAuth><EventSubPage title="Schedule" /></RequireAuth> },
+    { path: "events/:eventId/faq", element: <RequireAuth><EventSubPage title="FAQ" /></RequireAuth> },
+    { path: "events/:eventId/feedback", element: <RequireAuth><EventSubPage title="Feedback" /></RequireAuth> },
+    { path: "match", element: <RequireAuth><MatchPage /></RequireAuth> },
+    { path: "teams", element: <RequireAuth><TeamsPage /></RequireAuth> },
+    { path: "teams/:teamId", element: <RequireAuth><TeamDetailPage /></RequireAuth> },
+    { path: "teams/:teamId/chat", element: <RequireAuth><TeamChatPage /></RequireAuth> },
+    { path: "join-team/:token", element: <RequireAuth><JoinTeamPage /></RequireAuth> },
+    { path: "chat/lobby", element: <RequireAuth><ChatPage title="Lobby" /></RequireAuth> },
+    { path: "chat/support", element: <RequireAuth><ChatPage title="Support" /></RequireAuth> },
+    { path: "profile", element: <RequireAuth><ProfilePage /></RequireAuth> },
+    { path: "settings", element: <RequireAuth><SettingsPage /></RequireAuth> },
+    { path: "*", element: <NotFoundPage /> },
+  ],
+};
+
+const adminRoute = {
+  path: "/admin",
+  element: <RequireAdmin><AdminLayout /></RequireAdmin>,
+  children: [
+    { index: true, element: <AdminDashboardPage /> },
+    { path: "events", element: <AdminEventsPage /> },
+    { path: "events/new", element: <AdminEventCreatePage /> },
+    { path: "events/:eventId/participants", element: <AdminParticipantsPage /> },
+    { path: "users", element: <AdminTablePage title="Users" /> },
+    { path: "sessions", element: <AdminTablePage title="Sessions" /> },
+    { path: "audit-logs", element: <AdminTablePage title="Audit Logs" /> },
+  ],
+};
 
 export const router = createBrowserRouter([
-  {
-    path: "/",
-    element: <MobileAppLayout />,
-    errorElement: <NotFoundPage />,
-    children: [
-      { index: true, element: <HomePage /> },
-      { path: "login", element: <AuthPage /> },
-      { path: "auth/callback", element: <AuthCallbackPage /> },
-      { path: "onboarding", element: <RequireAuth><OnboardingPage /></RequireAuth> },
-      { path: "events", element: <RequireAuth><EventsPage /></RequireAuth> },
-      { path: "events/:eventId", element: <RequireAuth><EventDetailPage /></RequireAuth> },
-      { path: "events/:eventId/map", element: <RequireAuth><EventSubPage title="Map and Parking" /></RequireAuth> },
-      { path: "events/:eventId/schedule", element: <RequireAuth><EventSubPage title="Schedule" /></RequireAuth> },
-      { path: "events/:eventId/faq", element: <RequireAuth><EventSubPage title="FAQ" /></RequireAuth> },
-      { path: "events/:eventId/feedback", element: <RequireAuth><EventSubPage title="Feedback" /></RequireAuth> },
-      { path: "match", element: <RequireAuth><MatchPage /></RequireAuth> },
-      { path: "teams", element: <RequireAuth><TeamsPage /></RequireAuth> },
-      { path: "teams/:teamId", element: <RequireAuth><TeamDetailPage /></RequireAuth> },
-      { path: "teams/:teamId/chat", element: <RequireAuth><TeamChatPage /></RequireAuth> },
-      { path: "join-team/:token", element: <RequireAuth><JoinTeamPage /></RequireAuth> },
-      { path: "chat/lobby", element: <RequireAuth><ChatPage title="Lobby" /></RequireAuth> },
-      { path: "chat/support", element: <RequireAuth><ChatPage title="Support" /></RequireAuth> },
-      { path: "profile", element: <RequireAuth><ProfilePage /></RequireAuth> },
-      { path: "settings", element: <RequireAuth><SettingsPage /></RequireAuth> },
-      { path: "*", element: <NotFoundPage /> },
-    ],
-  },
-  {
-    path: "/admin",
-    element: <RequireAdmin><AdminLayout /></RequireAdmin>,
-    children: [
-      { index: true, element: <AdminDashboardPage /> },
-      { path: "events", element: <AdminEventsPage /> },
-      { path: "events/new", element: <AdminEventCreatePage /> },
-      { path: "events/:eventId/participants", element: <AdminParticipantsPage /> },
-      { path: "users", element: <AdminTablePage title="Users" /> },
-      { path: "sessions", element: <AdminTablePage title="Sessions" /> },
-      { path: "audit-logs", element: <AdminTablePage title="Audit Logs" /> },
-    ],
-  },
+  mobileAppRoute,
+  adminRoute,
 ]);
 
 function MobileAppLayout() {
