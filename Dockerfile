@@ -43,10 +43,13 @@ RUN VITE_SUPABASE_URL="$VITE_SUPABASE_URL" \
     VITE_ADMIN_BASE_URL="$VITE_ADMIN_BASE_URL" \
     npm run build
 
-# Production image — BUILD_VARIANT selects which build to serve.
-FROM nginx:1.27-alpine AS production
+# Intermediate stage — FROM supports ARG expansion, COPY --from does not.
 ARG BUILD_VARIANT=web
-COPY --from=build-${BUILD_VARIANT} /app/dist /usr/share/nginx/html
+FROM build-${BUILD_VARIANT} AS selected-build
+
+# Production image
+FROM nginx:1.27-alpine AS production
+COPY --from=selected-build /app/dist /usr/share/nginx/html
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 EXPOSE 80
 CMD ["nginx", "-g", "daemon off;"]
