@@ -23,7 +23,7 @@ export async function getMatchingContext(userId, eventId = null) {
   );
   const actors = [];
 
-  if (selectedEventId && (profileResult.data?.looking_for_team || profileResult.data?.open_to_joining_team)) {
+  if (selectedEventId && profileResult.data) {
     actors.push({ type: "user", id: userId, label: "Me", profile: profileResult.data, event_id: selectedEventId });
   }
 
@@ -66,9 +66,8 @@ export async function listCandidates(actor, userId, eventId = null) {
       supabase
         .from("profiles")
         .select(profileColumns)
-        .or("looking_for_team.eq.true,open_to_joining_team.eq.true")
         .neq("user_id", userId)
-        .limit(25),
+        .limit(50),
       listEventRegistrations(selectedEventId),
     ]);
 
@@ -101,9 +100,8 @@ export async function listCandidates(actor, userId, eventId = null) {
     supabase
       .from("profiles")
       .select(profileColumns)
-      .or("looking_for_team.eq.true,open_to_joining_team.eq.true")
       .neq("user_id", userId)
-      .limit(25),
+      .limit(50),
     listEventRegistrations(selectedEventId),
   ]);
 

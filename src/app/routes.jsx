@@ -1295,13 +1295,13 @@ function MatchPage() {
       {status === "idle" && actors.length === 0 ? (
         <EmptyCard
           title="Matching is locked."
-          body={selectedEventId ? "Mark yourself as looking for a team or set one of your teams to recruiting before swiping." : "Register for an event first, then come back here to match with participants from that hackathon."}
+          body={selectedEventId ? "Complete your profile or create a recruiting team before swiping." : "Register for an event first, then come back here to match with participants from that hackathon."}
         />
       ) : null}
       {status === "idle" && actor && !candidate ? (
         <EmptyCard
           title="No candidates right now."
-          body="Invite more builders to set themselves as looking for a team, or create a recruiting team so Hackmate can suggest more matches."
+          body="Invite more builders to register for this event, create a recruiting team, or ask an admin to reset swipes if you already reviewed everyone."
         />
       ) : null}
       {candidate ? (
