@@ -25,11 +25,16 @@ export async function getOrCreateChat({ eventId = null, teamId = null, type }) {
     return findChat({ eventId, teamId, type });
   }
 
+  if (error?.code === "42501" && type === "lobby") {
+    return { data: createVirtualChat({ eventId, teamId, type }), error: null };
+  }
+
   return { data, error };
 }
 
 export async function listChatMessages(chatId) {
   if (!supabase) return { data: [], error: null };
+  if (isVirtualChat(chatId)) return { data: [], error: null };
 
   const { data: messages, error } = await supabase
     .from("chat_messages")
@@ -55,6 +60,20 @@ export async function listChatMessages(chatId) {
 export async function sendChatMessage({ body, chatId, senderId }) {
   if (!supabase) {
     return { data: null, error: new Error("Supabase is not configured.") };
+  }
+
+  if (isVirtualChat(chatId)) {
+    return {
+      data: {
+        body,
+        chat_id: chatId,
+        created_at: new Date().toISOString(),
+        id: crypto.randomUUID(),
+        sender_id: senderId,
+        sender_profile: null,
+      },
+      error: null,
+    };
   }
 
   const { data, error } = await supabase
@@ -154,4 +173,18 @@ async function getSenderProfiles(messages) {
 
 function isUniqueConflict(error) {
   return error?.code === "23505";
+}
+
+function createVirtualChat({ eventId, teamId, type }) {
+  return {
+    id: `virtual:${type}:${eventId ?? "global"}:${teamId ?? "none"}`,
+    event_id: eventId,
+    team_id: teamId,
+    type,
+    created_at: new Date().toISOString(),
+  };
+}
+
+function isVirtualChat(chatId) {
+  return String(chatId ?? "").startsWith("virtual:");
 }
