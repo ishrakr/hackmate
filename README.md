@@ -1,6 +1,6 @@
 # Hackmate
 
-Hackmate is a mobile-first hackathon companion web application for participants, teams, organizers, and admins. It focuses on team formation, event logistics, live communication, attendance tracking, and organizer operations.
+Hackmate is a mobile-first hackathon companion web application for participants, teams, organizers, and admins. It should feel like a native mobile application on Android and iOS browsers while supporting a separate Bootstrap admin portal for operations.
 
 ## Core Goals
 
@@ -8,8 +8,8 @@ Hackmate is a mobile-first hackathon companion web application for participants,
 - Help teams that still need members recruit participants by role and skill.
 - Provide event information, maps, schedules, FAQs, announcements, and feedback.
 - Support real-time public, team, and support chat.
-- Provide organizer and admin tools for managing events, users, attendance, logs, and sessions.
-- Deliver a stable, accessible, mobile-first experience on Android and iOS browsers.
+- Provide admin tools for creating events, viewing participant lists, managing users, attendance, logs, and sessions.
+- Deliver a stable, accessible, native-app-like experience on Android and iOS browsers.
 
 ## Tech Stack
 
@@ -33,6 +33,25 @@ Hackmate is a mobile-first hackathon companion web application for participants,
 - [Admin Portal](docs/admin-portal.md)
 - [Testing Strategy](docs/testing.md)
 - [Deployment Notes](docs/deployment.md)
+
+## Development
+
+```sh
+npm install
+npm run dev
+```
+
+Run the Docker development server with:
+
+```sh
+docker compose up --build
+```
+
+Build for production with:
+
+```sh
+npm run build
+```
 
 ## Initial Build Order
 

@@ -6,8 +6,8 @@ Hackmate uses a React frontend connected to Supabase for authentication, databas
 
 ## High-Level Components
 
-- React application: participant, team, event, chat, and profile UI.
-- Bootstrap admin portal: admin-specific layout and tables.
+- React application: native-app-like participant, team, event, chat, and profile UI.
+- Bootstrap admin portal: admin-specific event creation, participant lists, users, sessions, and audit tables.
 - Supabase Auth: GitHub and Discord SSO.
 - Supabase Postgres: application data.
 - Supabase Realtime: chat, announcements, and selected live updates.
@@ -37,10 +37,15 @@ Hackmate uses a React frontend connected to Supabase for authentication, databas
 /profile
 /settings
 /admin
+/admin/events
+/admin/events/new
+/admin/events/:eventId/participants
 /admin/users
 /admin/sessions
 /admin/audit-logs
 ```
+
+The participant app must not expose event creation or full participant-list routes. Those flows live under `/admin`.
 
 ## Frontend Structure
 
@@ -74,6 +79,7 @@ src/
 - Use RLS policies to enforce access control.
 - Use service-role access only in trusted backend contexts.
 - Keep chatbot and QR token signing behind backend/API service abstractions.
+- Restrict event creation, event editing, and event participant-list queries to admin or authorized organizer contexts.
 
 ## Realtime Pattern
 

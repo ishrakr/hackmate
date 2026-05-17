@@ -2,6 +2,8 @@
 
 Use UUID primary keys where appropriate. Include `created_at` and `updated_at` timestamps on application tables.
 
+The initial schema and Row Level Security policies live in `supabase/migrations/202605160001_initial_schema.sql`.
+
 ## Core Tables
 
 ### profiles

@@ -1,0 +1,131 @@
+import { createContext, useContext, useEffect, useState } from "react";
+import {
+  isSupabaseConfigured,
+  supabase,
+} from "../../lib/supabase/client.js";
+
+const AuthContext = createContext(null);
+
+export function AuthProvider({ children }) {
+  const [session, setSession] = useState(null);
+  const [status, setStatus] = useState(
+    isSupabaseConfigured ? "loading" : "ready",
+  );
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (!supabase) {
+      setStatus("ready");
+      return undefined;
+    }
+
+    let isMounted = true;
+
+    supabase.auth.getSession().then(({ data, error: sessionError }) => {
+      if (!isMounted) return;
+
+      if (sessionError) {
+        setError(sessionError.message);
+      }
+
+      setSession(data.session);
+      setStatus("ready");
+    });
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+      setSession(nextSession);
+      setError("");
+      setStatus("ready");
+    });
+
+    return () => {
+      isMounted = false;
+      subscription.unsubscribe();
+    };
+  }, []);
+
+  async function signInWithProvider(provider, nextPath = "/onboarding") {
+    if (!supabase) {
+      const configError = new Error(
+        "Supabase is not configured. Add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.",
+      );
+      setError(configError.message);
+      return { error: configError };
+    }
+
+    setError("");
+
+    const callbackUrl = new URL("/auth/callback", window.location.origin);
+    callbackUrl.searchParams.set("next", nextPath);
+
+    const options = { redirectTo: callbackUrl.toString() };
+
+    if (provider === "github") {
+      options.scopes = "read:user user:email";
+    }
+
+    const { error: signInError } = await supabase.auth.signInWithOAuth({
+      provider,
+      options,
+    });
+
+    if (signInError) {
+      setError(signInError.message);
+    }
+
+    return { error: signInError };
+  }
+
+  async function signOut() {
+    if (!supabase) return { error: null };
+
+    const { error: signOutError } = await supabase.auth.signOut();
+    if (signOutError) {
+      setError(signOutError.message);
+    }
+
+    return { error: signOutError };
+  }
+
+  const roles = getUserRoles(session?.user);
+  const value = {
+    error,
+    isAuthenticated: Boolean(session),
+    isLoading: status === "loading",
+    isSupabaseConfigured,
+    role: roles[0] ?? (session ? "participant" : null),
+    roles,
+    session,
+    signInWithProvider,
+    signOut,
+    status,
+    user: session?.user ?? null,
+  };
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+}
+
+export function useAuth() {
+  const context = useContext(AuthContext);
+
+  if (!context) {
+    throw new Error("useAuth must be used inside AuthProvider");
+  }
+
+  return context;
+}
+
+function getUserRoles(user) {
+  if (!user) return [];
+
+  const roleValues = [
+    user.app_metadata?.role,
+    user.user_metadata?.role,
+    ...(Array.isArray(user.app_metadata?.roles) ? user.app_metadata.roles : []),
+    ...(Array.isArray(user.user_metadata?.roles) ? user.user_metadata.roles : []),
+  ];
+
+  return [...new Set(roleValues.filter(Boolean))];
+}

@@ -24,6 +24,12 @@ Profiles include:
 - Current team status
 - Availability
 
+Build order 4 adds the first profile management flow:
+
+- Onboarding persists whether the user is looking for a team.
+- Profile management can create or update display name, avatar, bio, links, desired role, experience level, availability, and matching eligibility.
+- GitHub OAuth metadata seeds the default display name, avatar, and GitHub URL when available.
+
 ## Swipe Matching
 
 Swipe behavior:
@@ -62,7 +68,7 @@ Teams support:
 
 ## Events
 
-Events page displays upcoming hackathons with:
+The participant Events screen displays upcoming admin-created hackathons with:
 
 - Name
 - Date and time
@@ -73,6 +79,16 @@ Events page displays upcoming hackathons with:
 - Capacity
 - Waitlist status
 - Banner image
+
+Participant event screens are read-only for event management. Event creation, editing, and participant lists belong in the admin portal.
+
+Build order 5 adds Supabase-backed participant event screens:
+
+- Events list reads upcoming admin-created events from `events`.
+- Event details show description, date/time, venue, capacity, status, and recent announcements.
+- Event subpages read `schedules` and visible `faqs`.
+- Map and parking uses event venue/address/coordinates with an OpenStreetMap link when coordinates exist.
+- Feedback can upsert a user's event feedback.
 
 Event detail pages include:
 
@@ -177,3 +193,25 @@ Feedback includes:
 - Anonymous option
 - Would attend again
 - Suggestions for improvement
+
+## Native Mobile UX
+
+The participant app should use native-mobile interaction patterns:
+
+- App-style screen stack instead of desktop marketing pages.
+- Bottom tab navigation for primary sections.
+- Thumb-friendly buttons, rows, cards, and swipe controls.
+- Safe-area padding for Android and iOS browsers.
+- Short, action-oriented screen copy.
+- Event, match, team, chat, and profile flows that each feel like a focused mobile screen.
+
+## Admin Event Management
+
+Admin portal event features:
+
+- Create events.
+- Edit event information.
+- Manage event capacity and registration status.
+- View participant lists by event.
+- Search and filter participants.
+- View registration, waitlist, check-in, and team status.

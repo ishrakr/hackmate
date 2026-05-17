@@ -2,14 +2,14 @@
 
 ## Product Summary
 
-Hackmate is a hackathon operating platform for participants, teams, organizers, and admins. It combines team discovery, event logistics, chat, attendance, and post-event feedback in one mobile-friendly application.
+Hackmate is a hackathon operating platform for participants, teams, organizers, and admins. It combines team discovery, event logistics, chat, attendance, and post-event feedback in one native-app-like mobile web application.
 
 ## User Roles
 
 ### Participant
 
 - Create and edit profile.
-- Browse hackathons.
+- Browse admin-created hackathons.
 - Select existing members as a team or mark themselves as looking for a team after signup.
 - Use swipe matching only when looking for a team.
 - Join teams.
@@ -28,7 +28,7 @@ Hackmate is a hackathon operating platform for participants, teams, organizers, 
 
 ### Organizer
 
-- Manage event information.
+- Manage event information after events are created in the admin portal.
 - Publish announcements.
 - Manage FAQ, schedule, restrictions, hours, parking, and food information.
 - Track attendance and participation.
@@ -38,6 +38,8 @@ Hackmate is a hackathon operating platform for participants, teams, organizers, 
 ### Admin
 
 - View users.
+- Create and edit events.
+- View participant lists for each event.
 - View login sessions and IP addresses.
 - View audit logs.
 - Manage roles and access.
@@ -48,7 +50,7 @@ Hackmate is a hackathon operating platform for participants, teams, organizers, 
 1. User signs in with GitHub or Discord.
 2. User completes onboarding and creates a participant profile.
 3. User selects existing members as their team or marks themselves as looking for a team.
-4. User browses upcoming hackathons.
+4. User browses upcoming hackathons created in the admin portal.
 5. User joins or registers for an event.
 6. Solo users looking for a team swipe through teams or other available participants.
 7. Teams looking for members swipe through the available participant pool.
@@ -60,10 +62,18 @@ Hackmate is a hackathon operating platform for participants, teams, organizers, 
 
 ## Non-Functional Requirements
 
-- Mobile-first layout.
+- Native-mobile app feel on Android and iOS browsers.
+- Mobile-first layout with app-style screens, bottom navigation, large touch targets, and safe-area support.
 - Responsive desktop support.
 - Accessible forms and navigation.
 - Clear loading, empty, and error states.
 - Secure data access through RLS.
 - Stable realtime behavior.
 - Minimal exposed personal data.
+
+## Event Management Ownership
+
+- Participants can browse events, register, view details, check in, and submit feedback.
+- Participants cannot create events or view full participant lists from the mobile app.
+- Admins create and edit events from the Bootstrap admin portal.
+- Admins view event participant lists from the Bootstrap admin portal.

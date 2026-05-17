@@ -2,6 +2,8 @@
 
 Do not commit real secrets. Use local `.env` files and deployment platform secrets.
 
+Use `.env.example` as the local template, then restart Vite after changing any `VITE_` variables.
+
 ## Required Variables
 
 ```txt
@@ -31,6 +33,38 @@ QR_TOKEN_SECRET=
 - `LLM_PROVIDER`: Identifier for the configured LLM backend.
 - `APP_BASE_URL`: Base URL used for redirects and QR links.
 - `QR_TOKEN_SECRET`: Secret used to sign QR team join tokens.
+
+## Supabase Auth Redirects
+
+Configure these redirect URLs in Supabase Auth for local development:
+
+```txt
+http://localhost:5173/auth/callback
+```
+
+Production deployments should add the deployed app URL with the same `/auth/callback` path.
+
+## GitHub Signup
+
+Supabase uses the same OAuth flow for GitHub signup and login. In Supabase Auth:
+
+- Enable the GitHub provider.
+- Set `GITHUB_CLIENT_ID` and `GITHUB_CLIENT_SECRET` from your GitHub OAuth app.
+- Keep user signups enabled if first-time GitHub users should be created automatically.
+- Add `http://localhost:5173/auth/callback` and the production `/auth/callback` URL to allowed redirects.
+
+The app requests GitHub `read:user` and `user:email` scopes so the profile can receive basic GitHub identity metadata.
+
+## Docker Usage
+
+Docker Compose reads the same local `.env` file as Vite. Set these before running `docker compose up --build`:
+
+```txt
+VITE_SUPABASE_URL=https://your-project-ref.supabase.co
+VITE_SUPABASE_ANON_KEY=your-public-anon-key
+```
+
+The `VITE_` Supabase values are passed to the dev container runtime. For production Docker builds, `VITE_SUPABASE_URL` is passed directly and `VITE_SUPABASE_ANON_KEY` is mapped to the internal Docker build argument `SUPABASE_PUBLIC_ANON` before Vite runs. Do not pass `SUPABASE_SERVICE_ROLE_KEY` into frontend Docker builds.
 
 ## Security Rules
 

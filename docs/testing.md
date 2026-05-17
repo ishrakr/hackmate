@@ -10,6 +10,7 @@ Include tests for:
 - Team creation and joining.
 - QR token validation.
 - Event registration and waitlist behavior.
+- Admin event creation and participant list access.
 - Chat permissions.
 - Admin authorization.
 - Feedback submission.
@@ -25,6 +26,7 @@ Use React testing tools to verify:
 - Empty states.
 - Error states.
 - Mobile-friendly interaction behavior.
+- Native-mobile layout behavior, including bottom tabs, safe-area spacing, and large touch targets.
 
 ## Integration Testing
 
@@ -35,6 +37,7 @@ Test Supabase interactions for:
 - Realtime subscriptions.
 - Team membership permissions.
 - Admin-only table access.
+- Admin-only event creation and participant list access.
 
 ## Manual QA Checklist
 
@@ -50,4 +53,6 @@ Test Supabase interactions for:
 - Support chat reaches organizers.
 - Event map works on mobile.
 - Admin portal blocks non-admin users.
+- Event creation is available in the admin portal only.
+- Event participant lists are available in the admin portal only.
 - Feedback can only be submitted after event completion.

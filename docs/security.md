@@ -24,7 +24,9 @@ Authorization must be enforced through Supabase Row Level Security policies and 
 - Team chat requires approved team membership.
 - Support chat requires participant, organizer, or admin access.
 - Admin data requires admin role.
-- Organizer event management requires organizer role for that event.
+- Event creation requires admin or explicitly authorized organizer access.
+- Event participant lists require admin or explicitly authorized organizer access.
+- Organizer event management requires organizer role for that event after the event exists.
 - QR token validation must happen in a trusted context.
 
 ## Sensitive Data
@@ -66,3 +68,4 @@ Protect:
 - Log key admin actions.
 - Paginate large data tables.
 - Restrict session and IP address access to admins.
+- Restrict event creation, event editing, and event participant lists to admin or authorized organizer roles.

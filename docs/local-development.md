@@ -10,13 +10,13 @@
 
 ## Setup Steps
 
-1. Install dependencies.
-2. Create a `.env` file using `docs/environment-variables.md`.
-3. Configure Supabase URL and anon key.
-4. Configure GitHub and Discord OAuth credentials in Supabase Auth.
-5. Run database migrations.
-6. Start the React app.
-7. Start Docker services when using containerized local development.
+1. Install dependencies with `npm install`.
+2. Create a `.env` file from `.env.example` and fill in `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`.
+3. Configure GitHub and Discord providers in Supabase Auth with `/auth/callback` redirects.
+4. Start the React app with `npm run dev`.
+5. Open the local Vite URL shown in the terminal.
+6. Start Docker services with `docker compose up --build` when using containerized development.
+7. Run database migrations with `supabase db push` or through your Supabase project's SQL editor.
 
 ## Docker Requirements
 
@@ -25,6 +25,7 @@ The project should include:
 - `Dockerfile`
 - `docker-compose.yml`
 - `.dockerignore`
+- `nginx.conf` for production SPA routing fallback
 - Environment variable documentation
 
 ## Example Commands
@@ -37,6 +38,17 @@ npm run dev
 ```sh
 docker compose up --build
 ```
+
+```sh
+npm run build
+docker compose config
+```
+
+```sh
+supabase db push
+```
+
+If you are using a hosted Supabase project without the CLI, run the SQL files in `supabase/migrations/` from the Supabase dashboard SQL editor in filename order.
 
 ## Local Verification
 
