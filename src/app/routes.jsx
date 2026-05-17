@@ -13,6 +13,7 @@ import {
   peekOAuthFlow,
   useAuth,
 } from "../features/auth/auth-context.jsx";
+import { consumeAdminOAuthIntent } from "../lib/oauth-intent.js";
 import { ChatRoom, SupportChatRoom } from "../features/chat/ChatRoom.jsx";
 import { EventChatbot } from "../features/chat/EventChatbot.jsx";
 import {
@@ -351,10 +352,19 @@ function AuthCallbackPage() {
   const { error, isAuthenticated, isLoading, isSupabaseConfigured } = useAuth();
   const flow = peekOAuthFlow();
   const nextPath = getSafeNextPath(new URLSearchParams(location.search).get("next"));
+  const adminIntent = flow?.mode === "admin" ? null : consumeAdminOAuthIntent();
+
+  if (adminIntent?.adminOrigin && adminIntent.adminOrigin !== window.location.origin) {
+    const target = new URL("/auth/callback", adminIntent.adminOrigin);
+    target.search = location.search;
+    target.hash = location.hash;
+    window.location.replace(target.toString());
+    return null;
+  }
 
   if (flow?.mode === "admin") {
     consumeOAuthFlow();
-    window.location.replace(import.meta.env.VITE_ADMIN_BASE_URL || "/");
+    window.location.replace(import.meta.env.VITE_ADMIN_BASE_URL || adminIntent?.adminOrigin || "/");
     return null;
   }
 

@@ -22,6 +22,7 @@ import {
   listEventParticipants,
   saveAdminEvent,
 } from "./admin-service.js";
+import { clearAdminOAuthIntent, setAdminOAuthIntent } from "../../lib/oauth-intent.js";
 
 const eventStatusOptions = ["draft", "open", "waitlist", "closed", "cancelled"];
 const registrationStatusOptions = ["Registered", "Waitlisted", "Checked in", "No-show", "Cancelled"];
@@ -895,11 +896,13 @@ function AdminSignInPage({ nextPath }) {
 
   async function handleSignIn(provider) {
     setPendingProvider(provider);
+    const adminOrigin = getAdminOrigin();
+    setAdminOAuthIntent(adminOrigin);
     const { error: signInError } = await signInWithProvider(
       provider,
       adminNextPath,
       {
-        callbackOrigin: window.location.origin,
+        callbackOrigin: adminOrigin,
         callbackPath: "/auth/callback",
         mode: "admin",
       },
@@ -962,6 +965,7 @@ export function AdminAuthCallbackPage() {
 
   if (!isLoading && isAuthenticated) {
     consumeOAuthFlow();
+    clearAdminOAuthIntent();
     return <Navigate replace to={nextPath} />;
   }
 
@@ -991,6 +995,16 @@ function AdminNavLink({ children, end = false, to }) {
 function adminPath(path = "") {
   if (!path || path === "/") return adminBasePath || "/";
   return `${adminBasePath}${path}`;
+}
+
+function getAdminOrigin() {
+  const configured = import.meta.env.VITE_ADMIN_BASE_URL;
+
+  if (configured) {
+    return new URL(configured, window.location.origin).origin;
+  }
+
+  return window.location.origin;
 }
 
 function getSafeAdminPath(value) {
