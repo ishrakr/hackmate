@@ -580,6 +580,10 @@ function OnboardingPage() {
       ...baseProfile,
       looking_for_team: nextStatus === "looking",
       open_to_joining_team: nextStatus === "looking",
+      contact_preferences: {
+        ...(baseProfile.contact_preferences ?? {}),
+        team_setup_intent: nextStatus,
+      },
     };
 
     const { error } = await upsertProfile(updates);
@@ -590,7 +594,7 @@ function OnboardingPage() {
       return;
     }
 
-    window.location.assign(nextStatus === "looking" ? "/match" : "/teams");
+    window.location.assign(nextStatus === "looking" ? "/match" : `/teams?mode=${nextStatus}`);
   }
 
   return (
@@ -621,7 +625,7 @@ function OnboardingPage() {
         />
         <ChoiceButton
           title="My team needs people"
-          body="Set up your profile now, then turn on recruiting from the team screen."
+          body="Create a recruiting team so solo builders can match with you."
           action={status === "recruiting" ? "Saving..." : "Recruit members"}
           disabled={status !== "idle"}
           onClick={() => saveTeamStatus("recruiting")}
@@ -1409,9 +1413,11 @@ function CandidateDetailSheet({ candidate, onClose }) {
 
 function TeamsPage() {
   const { user } = useAuth();
+  const location = useLocation();
+  const mode = new URLSearchParams(location.search).get("mode");
   const [teams, setTeams] = useState([]);
   const [events, setEvents] = useState([]);
-  const [form, setForm] = useState({ event_id: "", name: "", description: "", project_idea: "", role: "Team lead", recruiting_members: false });
+  const [form, setForm] = useState({ event_id: "", name: "", description: "", project_idea: "", role: "Team lead", recruiting_members: mode === "recruiting" });
   const [status, setStatus] = useState("loading");
   const [message, setMessage] = useState("");
 
@@ -1436,6 +1442,12 @@ function TeamsPage() {
       isMounted = false;
     };
   }, [user.id]);
+
+  useEffect(() => {
+    if (mode === "recruiting") {
+      setForm((current) => ({ ...current, recruiting_members: true }));
+    }
+  }, [mode]);
 
   function updateForm(field, value) {
     setForm((current) => ({ ...current, [field]: value }));
@@ -1517,7 +1529,7 @@ function TeamsPage() {
         </Field>
         <label className="check-row">
           <input checked={form.recruiting_members} type="checkbox" onChange={(event) => updateForm("recruiting_members", event.target.checked)} />
-          <span>This team is recruiting members.</span>
+          <span>This team is looking for teammates.</span>
         </label>
         <button className="primary-action" disabled={status === "saving" || events.length === 0} type="submit">
           {status === "saving" ? "Creating..." : "Create team"}
