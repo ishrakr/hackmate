@@ -18,12 +18,20 @@ import {
   upsertFeedback,
 } from "../features/events/event-service.js";
 import {
+  createSwipe,
+  getMatchingContext,
+  listCandidates,
+} from "../features/matching/matching-service.js";
+import {
   buildDefaultProfile,
   getProfile,
   upsertProfile,
 } from "../features/profiles/profile-service.js";
 import {
+  createJoinRequest,
   createTeam,
+  createTeamJoinToken,
+  getTeamByJoinToken,
   getTeam,
   listUserTeams,
   updateTeam,
@@ -916,6 +924,94 @@ function FaqList({ items }) {
 }
 
 function MatchPage() {
+  const { user } = useAuth();
+  const [actors, setActors] = useState([]);
+  const [actorIndex, setActorIndex] = useState(0);
+  const [candidates, setCandidates] = useState([]);
+  const [candidateIndex, setCandidateIndex] = useState(0);
+  const [status, setStatus] = useState("loading");
+  const [message, setMessage] = useState("");
+
+  const actor = actors[actorIndex] ?? null;
+  const candidate = candidates[candidateIndex] ?? null;
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadContext() {
+      setStatus("loading");
+      const { data, error } = await getMatchingContext(user.id);
+
+      if (!isMounted) return;
+
+      if (error) {
+        setMessage(error.message);
+        setActors([]);
+      } else {
+        setActors(data.actors);
+        setMessage("");
+      }
+
+      setStatus("idle");
+    }
+
+    loadContext();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [user.id]);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadCandidates() {
+      if (!actor) {
+        setCandidates([]);
+        return;
+      }
+
+      setStatus("loading-candidates");
+      const { data, error } = await listCandidates(actor, user.id);
+
+      if (!isMounted) return;
+
+      if (error) {
+        setMessage(error.message);
+        setCandidates([]);
+      } else {
+        setCandidates(data);
+        setCandidateIndex(0);
+        setMessage("");
+      }
+
+      setStatus("idle");
+    }
+
+    loadCandidates();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [actor, user.id]);
+
+  async function handleSwipe(direction) {
+    if (!actor || !candidate) return;
+
+    setStatus("saving");
+    setMessage("");
+    const { error } = await createSwipe(actor, candidate, direction);
+
+    if (error) {
+      setMessage(error.message);
+      setStatus("idle");
+      return;
+    }
+
+    setCandidateIndex((current) => current + 1);
+    setStatus("idle");
+  }
+
   return (
     <ScreenStack>
       <ScreenHeader
@@ -924,27 +1020,45 @@ function MatchPage() {
         body="Solo participants looking for a team and teams recruiting members can enter this pool. Complete teams stay out."
       />
 
-      <section className="swipe-card" aria-label="Sample match card">
-        <div className="swipe-card-top">
-          <span className="avatar-circle">A</span>
-          <span className="status-pill">Looking for team</span>
-        </div>
-        <h2>Avery Chen</h2>
-        <p>Frontend developer with React, maps, and realtime UI experience.</p>
-        <div className="chip-row">
-          <span>React: Advanced</span>
-          <span>UX: Intermediate</span>
-          <span>Supabase: Beginner</span>
-        </div>
-        <div className="swipe-actions">
-          <button className="round-action reject" type="button" aria-label="Skip profile">
-            No
-          </button>
-          <button className="round-action accept" type="button" aria-label="Express interest">
-            Yes
-          </button>
-        </div>
-      </section>
+      {message ? <p className="auth-error" role="alert">{message}</p> : null}
+      {actors.length > 1 ? (
+        <section className="native-card compact-card">
+          <Field label="Matching as" htmlFor="matchActor">
+            <select
+              id="matchActor"
+              value={actorIndex}
+              onChange={(event) => setActorIndex(Number(event.target.value))}
+            >
+              {actors.map((option, index) => (
+                <option key={`${option.type}-${option.id}`} value={index}>{option.label}</option>
+              ))}
+            </select>
+          </Field>
+        </section>
+      ) : null}
+      {status === "loading" || status === "loading-candidates" ? (
+        <LoadingCard label="Match" body="Loading eligible matches." />
+      ) : null}
+      {status === "idle" && actors.length === 0 ? (
+        <EmptyCard
+          title="Matching is locked."
+          body="Mark yourself as looking for a team or set one of your teams to recruiting before swiping."
+        />
+      ) : null}
+      {status === "idle" && actor && !candidate ? (
+        <EmptyCard
+          title="No candidates right now."
+          body="You have reviewed the current eligible pool. New people and recruiting teams will appear here."
+        />
+      ) : null}
+      {candidate ? (
+        <MatchCard
+          actor={actor}
+          candidate={candidate}
+          disabled={status === "saving"}
+          onSwipe={handleSwipe}
+        />
+      ) : null}
 
       <section className="native-card compact-card">
         <p className="card-label">Eligibility rule</p>
@@ -954,6 +1068,46 @@ function MatchPage() {
         </p>
       </section>
     </ScreenStack>
+  );
+}
+
+function MatchCard({ actor, candidate, disabled, onSwipe }) {
+  const isTeam = candidate.type === "team";
+  const title = isTeam ? candidate.team.name : candidate.profile.display_name;
+  const body = isTeam
+    ? candidate.team.project_idea || candidate.team.description || "Recruiting team looking for builders."
+    : candidate.profile.bio || "Solo participant looking for a team.";
+  const initial = title?.charAt(0) || "?";
+
+  return (
+    <section className="swipe-card" aria-label={`${title} match card`}>
+      <div className="swipe-card-top">
+        {candidate.profile?.avatar_url ? (
+          <img className="avatar-circle" src={candidate.profile.avatar_url} alt="" />
+        ) : (
+          <span className="avatar-circle">{initial}</span>
+        )}
+        <span className="status-pill">{isTeam ? "Recruiting team" : "Looking for team"}</span>
+      </div>
+      <p className="card-label">{actor.type === "team" ? `For ${actor.label}` : "For you"}</p>
+      <h2>{title}</h2>
+      <p>{body}</p>
+      <div className="chip-row">
+        {isTeam && candidate.team.events?.name ? <span>{candidate.team.events.name}</span> : null}
+        {isTeam && candidate.team.github_url ? <span>GitHub</span> : null}
+        {!isTeam && candidate.profile.desired_role ? <span>{candidate.profile.desired_role}</span> : null}
+        {!isTeam && candidate.profile.experience_level ? <span>{candidate.profile.experience_level}</span> : null}
+        {!isTeam && candidate.profile.availability ? <span>{candidate.profile.availability}</span> : null}
+      </div>
+      <div className="swipe-actions">
+        <button className="round-action reject" disabled={disabled} onClick={() => onSwipe("left")} type="button" aria-label="Skip profile">
+          No
+        </button>
+        <button className="round-action accept" disabled={disabled} onClick={() => onSwipe("right")} type="button" aria-label="Express interest">
+          Yes
+        </button>
+      </div>
+    </section>
   );
 }
 
@@ -1079,8 +1233,10 @@ function TeamsPage() {
 
 function TeamDetailPage() {
   const { teamId } = useParams();
+  const { user } = useAuth();
   const [team, setTeam] = useState(null);
   const [form, setForm] = useState({ name: "", description: "", project_idea: "", github_url: "", devpost_url: "", recruiting_members: false });
+  const [invite, setInvite] = useState(null);
   const [status, setStatus] = useState("loading");
   const [message, setMessage] = useState("");
 
@@ -1135,6 +1291,25 @@ function TeamDetailPage() {
     setStatus("idle");
   }
 
+  async function handleCreateInvite() {
+    setStatus("creating-invite");
+    setMessage("");
+
+    const { data, error } = await createTeamJoinToken(teamId, user.id);
+
+    if (error) {
+      setMessage(error.message);
+      setStatus("idle");
+      return;
+    }
+
+    setInvite({
+      url: `${window.location.origin}/join-team/${data.token}`,
+      expires_at: data.expires_at,
+    });
+    setStatus("idle");
+  }
+
   if (status === "loading") {
     return <LoadingCard label="Team" body="Loading team profile." />;
   }
@@ -1168,6 +1343,21 @@ function TeamDetailPage() {
             </span>
           ))}
         </div>
+      </section>
+      <section className="native-card event-section">
+        <p className="card-label">QR invite</p>
+        <h2>Invite by link or QR.</h2>
+        <p>Generate a one-week join link. Teammates scan or open it, then submit a request for approval.</p>
+        <button className="secondary-action" disabled={status === "creating-invite"} onClick={handleCreateInvite} type="button">
+          {status === "creating-invite" ? "Generating..." : "Generate join link"}
+        </button>
+        {invite ? (
+          <div className="qr-preview">
+            <img alt="Team join QR code" src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(invite.url)}`} />
+            <p className="fine-print">{invite.url}</p>
+            <p className="fine-print">Expires {formatFullDate(invite.expires_at)}</p>
+          </div>
+        ) : null}
       </section>
       <form className="native-card profile-form" onSubmit={handleSave}>
         <p className="card-label">Edit team</p>
@@ -1219,19 +1409,85 @@ function TeamChatPage() {
 
 function JoinTeamPage() {
   const { token } = useParams();
+  const { user } = useAuth();
+  const [team, setTeam] = useState(null);
+  const [note, setNote] = useState("");
+  const [status, setStatus] = useState("loading");
+  const [message, setMessage] = useState("");
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadInvite() {
+      setStatus("loading");
+      const { data, error } = await getTeamByJoinToken(token);
+
+      if (!isMounted) return;
+
+      if (error) {
+        setMessage(error.message);
+      } else if (!data?.team) {
+        setMessage("This join link is invalid or expired.");
+      } else {
+        setTeam(data.team);
+        setMessage("");
+      }
+
+      setStatus("idle");
+    }
+
+    loadInvite();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [token]);
+
+  async function handleJoinRequest() {
+    if (!team) return;
+
+    setStatus("saving");
+    setMessage("");
+    const { error } = await createJoinRequest({
+      teamId: team.id,
+      userId: user.id,
+      message: note,
+    });
+
+    if (error) {
+      setMessage(error.message);
+    } else {
+      setMessage("Join request sent. The team lead can approve you in a later team-management step.");
+    }
+
+    setStatus("idle");
+  }
+
+  if (status === "loading") {
+    return <LoadingCard label="QR join" body="Checking this team invite." />;
+  }
 
   return (
     <ScreenStack>
       <ScreenHeader
         eyebrow="QR join"
-        title="Request to join this team?"
-        body="Sign in, confirm the request, and wait for the team lead to approve access."
+        title={team ? `Join ${team.name}?` : "Invite unavailable"}
+        body={team ? "Confirm the request and wait for the team lead to approve access." : "Ask the team lead for a fresh QR invite."}
       />
       <section className="native-card action-card">
-        <p className="fine-print">Token preview: {token}</p>
-        <button className="primary-action" type="button">
-          Send join request
-        </button>
+        {team ? (
+          <>
+            <p className="card-label">{team.events?.name ?? "Team invite"}</p>
+            <h2>{team.project_idea || team.description || "Team details"}</h2>
+            <Field label="Message to team lead" htmlFor="joinMessage">
+              <textarea id="joinMessage" rows="3" value={note} onChange={(event) => setNote(event.target.value)} />
+            </Field>
+            <button className="primary-action" disabled={status === "saving"} onClick={handleJoinRequest} type="button">
+              {status === "saving" ? "Sending..." : "Send join request"}
+            </button>
+          </>
+        ) : null}
+        {message ? <p className={message.startsWith("Join request") ? "form-success" : "auth-error"}>{message}</p> : null}
       </section>
     </ScreenStack>
   );
