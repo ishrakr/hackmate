@@ -1351,7 +1351,7 @@ function MatchModal({ candidate, onClose }) {
         onClick={(event) => event.stopPropagation()}
         role="dialog"
       >
-        <span className="match-modal-icon" aria-hidden="true">♥</span>
+        <span className="match-modal-icon" aria-hidden="true">{`{}`}</span>
         <p className="card-label">It's a match</p>
         <h2 id="matchModalTitle">You matched with {title}.</h2>
         <p>{subtitle}</p>
