@@ -64,6 +64,55 @@ export async function getEventAnnouncements(eventId) {
   return { data: data ?? [], error };
 }
 
+export async function getEventMapMarkers(eventId) {
+  if (!supabase) return { data: [], error: null };
+
+  const { data, error } = await supabase
+    .from("event_map_markers")
+    .select("id,label,description,marker_type,latitude,longitude,floor,sort_order,visible")
+    .eq("event_id", eventId)
+    .eq("visible", true)
+    .order("sort_order", { ascending: true })
+    .order("label", { ascending: true });
+
+  return { data: data ?? [], error };
+}
+
+export async function getEventRoomAreas(eventId) {
+  if (!supabase) return { data: [], error: null };
+
+  const { data, error } = await supabase
+    .from("event_room_areas")
+    .select("id,name,description,floor,area_type,sort_order,visible")
+    .eq("event_id", eventId)
+    .eq("visible", true)
+    .order("sort_order", { ascending: true })
+    .order("name", { ascending: true });
+
+  return { data: data ?? [], error };
+}
+
+export function subscribeToEventAnnouncements(eventId, callback) {
+  if (!supabase || !eventId) return () => {};
+
+  const channel = supabase
+    .channel(`event-announcements:${eventId}`)
+    .on(
+      "postgres_changes",
+      {
+        event: "*",
+        schema: "public",
+        table: "announcements",
+      },
+      callback,
+    )
+    .subscribe();
+
+  return () => {
+    supabase.removeChannel(channel);
+  };
+}
+
 export async function upsertFeedback(feedback) {
   if (!supabase) {
     return { data: null, error: new Error("Supabase is not configured.") };

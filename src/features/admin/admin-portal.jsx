@@ -15,18 +15,33 @@ import {
 import {
   getAdminDashboardMetrics,
   getAdminEvent,
+  deleteAdminAnnouncement,
+  deleteAdminFaq,
+  deleteAdminMapMarker,
+  deleteAdminRoomArea,
   listAdminAuditLogs,
+  listAdminAnnouncements,
   listAdminEvents,
+  listAdminFaqs,
+  listAdminMapMarkers,
+  listAdminRoomAreas,
   listAdminSessions,
   listAdminUsers,
   listEventParticipants,
+  saveAdminAnnouncement,
   saveAdminEvent,
+  saveAdminFaq,
+  saveAdminMapMarker,
+  saveAdminRoomArea,
 } from "./admin-service.js";
 import { clearAdminOAuthIntent, setAdminOAuthIntent } from "../../lib/oauth-intent.js";
 
 const eventStatusOptions = ["draft", "open", "waitlist", "closed", "cancelled"];
 const registrationStatusOptions = ["Registered", "Waitlisted", "Checked in", "No-show", "Cancelled"];
 const sessionProviderOptions = ["github"];
+const markerTypeOptions = ["venue", "parking", "entrance", "room", "food", "help", "other"];
+const roomAreaTypeOptions = ["room", "sponsor", "workshop", "judging", "food", "quiet", "restricted", "other"];
+const announcementPriorityOptions = ["normal", "high", "urgent"];
 const adminBasePath = import.meta.env.VITE_APP_MODE === "admin" ? "" : "/admin";
 const isStandaloneAdmin = import.meta.env.VITE_APP_MODE === "admin";
 const temporaryGithubAdmin = "ishrakr";
@@ -470,7 +485,7 @@ export function AdminEventEditorPage() {
       <AdminPageHeader
         eyebrow={isEditing ? "Edit event" : "Create event"}
         title={isEditing ? "Update hackathon details" : "New hackathon"}
-        body="This form controls the participant-facing event card and detail screens. Organizers can manage FAQ and schedule records after creation."
+        body="This form controls participant-facing event details, maps, FAQs, and announcements."
         action={
           isEditing ? (
             <Link className="btn btn-outline-primary" to={adminPath(`/events/${eventId}/participants`)}>
@@ -589,6 +604,30 @@ export function AdminEventEditorPage() {
               value={form.address}
             />
           </div>
+          <div className="col-12 col-md-6">
+            <label className="form-label" htmlFor="eventLatitude">Venue latitude</label>
+            <input
+              className="form-control"
+              id="eventLatitude"
+              onChange={(event) => setForm((current) => ({ ...current, latitude: event.target.value }))}
+              placeholder="41.878100"
+              type="number"
+              step="0.000001"
+              value={form.latitude}
+            />
+          </div>
+          <div className="col-12 col-md-6">
+            <label className="form-label" htmlFor="eventLongitude">Venue longitude</label>
+            <input
+              className="form-control"
+              id="eventLongitude"
+              onChange={(event) => setForm((current) => ({ ...current, longitude: event.target.value }))}
+              placeholder="-87.629800"
+              type="number"
+              step="0.000001"
+              value={form.longitude}
+            />
+          </div>
 
           <div className="col-12">
             <div className="rounded-4 border bg-body-tertiary p-3">
@@ -609,6 +648,8 @@ export function AdminEventEditorPage() {
           </div>
         </div>
       </form>
+
+      {isEditing ? <AdminEventContentManager eventId={eventId} eventName={form.name} /> : null}
     </section>
   );
 }
@@ -754,6 +795,497 @@ export function AdminParticipantsPage() {
 
       <AdminPagination count={count} page={page} pageSize={pageSize} onPageChange={setPage} />
     </section>
+  );
+}
+
+function AdminEventContentManager({ eventId, eventName }) {
+  const [faqs, setFaqs] = useState([]);
+  const [markers, setMarkers] = useState([]);
+  const [areas, setAreas] = useState([]);
+  const [announcements, setAnnouncements] = useState([]);
+  const [faqForm, setFaqForm] = useState(buildFaqForm());
+  const [markerForm, setMarkerForm] = useState(buildMarkerForm());
+  const [areaForm, setAreaForm] = useState(buildRoomAreaForm());
+  const [announcementForm, setAnnouncementForm] = useState(buildAnnouncementForm());
+  const [editingFaqId, setEditingFaqId] = useState("");
+  const [editingMarkerId, setEditingMarkerId] = useState("");
+  const [editingAreaId, setEditingAreaId] = useState("");
+  const [editingAnnouncementId, setEditingAnnouncementId] = useState("");
+  const [status, setStatus] = useState("loading");
+  const [message, setMessage] = useState("");
+
+  async function loadContent() {
+    setStatus("loading");
+    const [faqResult, markerResult, areaResult, announcementResult] = await Promise.all([
+      listAdminFaqs(eventId),
+      listAdminMapMarkers(eventId),
+      listAdminRoomAreas(eventId),
+      listAdminAnnouncements(eventId),
+    ]);
+
+    const error =
+      faqResult.error ||
+      markerResult.error ||
+      areaResult.error ||
+      announcementResult.error;
+
+    if (error) {
+      setMessage(error.message);
+    } else {
+      setFaqs(faqResult.data);
+      setMarkers(markerResult.data);
+      setAreas(areaResult.data);
+      setAnnouncements(announcementResult.data);
+      setMessage("");
+    }
+
+    setStatus("idle");
+  }
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadMountedContent() {
+      setStatus("loading");
+      const [faqResult, markerResult, areaResult, announcementResult] = await Promise.all([
+        listAdminFaqs(eventId),
+        listAdminMapMarkers(eventId),
+        listAdminRoomAreas(eventId),
+        listAdminAnnouncements(eventId),
+      ]);
+
+      if (!isMounted) return;
+
+      const error =
+        faqResult.error ||
+        markerResult.error ||
+        areaResult.error ||
+        announcementResult.error;
+
+      if (error) {
+        setMessage(error.message);
+      } else {
+        setFaqs(faqResult.data);
+        setMarkers(markerResult.data);
+        setAreas(areaResult.data);
+        setAnnouncements(announcementResult.data);
+        setMessage("");
+      }
+
+      setStatus("idle");
+    }
+
+    loadMountedContent();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [eventId]);
+
+  async function handleFaqSubmit(event) {
+    event.preventDefault();
+    setStatus("saving");
+    const { error } = await saveAdminFaq(eventId, editingFaqId, {
+      question: faqForm.question.trim(),
+      answer: faqForm.answer.trim(),
+      category: emptyToNull(faqForm.category),
+      visible: faqForm.visible,
+    });
+    await finishContentMutation(error, () => {
+      setFaqForm(buildFaqForm());
+      setEditingFaqId("");
+    });
+  }
+
+  async function handleMarkerSubmit(event) {
+    event.preventDefault();
+    setStatus("saving");
+    const { error } = await saveAdminMapMarker(eventId, editingMarkerId, {
+      label: markerForm.label.trim(),
+      description: emptyToNull(markerForm.description),
+      marker_type: markerForm.marker_type,
+      latitude: Number(markerForm.latitude),
+      longitude: Number(markerForm.longitude),
+      floor: emptyToNull(markerForm.floor),
+      sort_order: Number(markerForm.sort_order || 0),
+      visible: markerForm.visible,
+    });
+    await finishContentMutation(error, () => {
+      setMarkerForm(buildMarkerForm());
+      setEditingMarkerId("");
+    });
+  }
+
+  async function handleAreaSubmit(event) {
+    event.preventDefault();
+    setStatus("saving");
+    const { error } = await saveAdminRoomArea(eventId, editingAreaId, {
+      name: areaForm.name.trim(),
+      description: emptyToNull(areaForm.description),
+      floor: emptyToNull(areaForm.floor),
+      area_type: areaForm.area_type,
+      sort_order: Number(areaForm.sort_order || 0),
+      visible: areaForm.visible,
+    });
+    await finishContentMutation(error, () => {
+      setAreaForm(buildRoomAreaForm());
+      setEditingAreaId("");
+    });
+  }
+
+  async function handleAnnouncementSubmit(event) {
+    event.preventDefault();
+    setStatus("saving");
+    const { error } = await saveAdminAnnouncement(eventId, editingAnnouncementId, {
+      title: announcementForm.title.trim(),
+      body: announcementForm.body.trim(),
+      priority: announcementForm.priority,
+      is_global: announcementForm.is_global,
+    });
+    await finishContentMutation(error, () => {
+      setAnnouncementForm(buildAnnouncementForm());
+      setEditingAnnouncementId("");
+    });
+  }
+
+  async function finishContentMutation(error, reset) {
+    if (error) {
+      setMessage(error.message);
+      setStatus("idle");
+      return;
+    }
+
+    reset();
+    await loadContent();
+  }
+
+  return (
+    <div className="admin-content-grid mt-4">
+      <div className="d-flex flex-column flex-lg-row justify-content-between gap-2 align-items-lg-end">
+        <div>
+          <p className="text-uppercase text-secondary fw-semibold small mb-2">Event content</p>
+          <h2 className="h3 mb-1">FAQ, map, rooms, and announcements</h2>
+          <p className="text-secondary mb-0">
+            Publishing tools for {eventName || "this event"}.
+          </p>
+        </div>
+        {status === "loading" ? <span className="badge text-bg-secondary">Loading</span> : null}
+        {status === "saving" ? <span className="badge text-bg-primary">Saving</span> : null}
+      </div>
+
+      {message ? <AdminInfoAlert tone="danger" message={message} /> : null}
+
+      <div className="row g-4">
+        <div className="col-12 col-xl-6">
+          <AdminFaqManager
+            editingFaqId={editingFaqId}
+            faqs={faqs}
+            form={faqForm}
+            onDelete={async (id) => finishContentMutation((await deleteAdminFaq(id)).error, () => {})}
+            onEdit={(faq) => {
+              setEditingFaqId(faq.id);
+              setFaqForm(faqToForm(faq));
+            }}
+            onFormChange={setFaqForm}
+            onSubmit={handleFaqSubmit}
+            onCancel={() => {
+              setEditingFaqId("");
+              setFaqForm(buildFaqForm());
+            }}
+          />
+        </div>
+        <div className="col-12 col-xl-6">
+          <AdminAnnouncementManager
+            announcements={announcements}
+            editingAnnouncementId={editingAnnouncementId}
+            form={announcementForm}
+            onDelete={async (id) => finishContentMutation((await deleteAdminAnnouncement(id)).error, () => {})}
+            onEdit={(announcement) => {
+              setEditingAnnouncementId(announcement.id);
+              setAnnouncementForm(announcementToForm(announcement));
+            }}
+            onFormChange={setAnnouncementForm}
+            onSubmit={handleAnnouncementSubmit}
+            onCancel={() => {
+              setEditingAnnouncementId("");
+              setAnnouncementForm(buildAnnouncementForm());
+            }}
+          />
+        </div>
+        <div className="col-12 col-xl-7">
+          <AdminMapMarkerManager
+            editingMarkerId={editingMarkerId}
+            form={markerForm}
+            markers={markers}
+            onDelete={async (id) => finishContentMutation((await deleteAdminMapMarker(id)).error, () => {})}
+            onEdit={(marker) => {
+              setEditingMarkerId(marker.id);
+              setMarkerForm(markerToForm(marker));
+            }}
+            onFormChange={setMarkerForm}
+            onSubmit={handleMarkerSubmit}
+            onCancel={() => {
+              setEditingMarkerId("");
+              setMarkerForm(buildMarkerForm());
+            }}
+          />
+        </div>
+        <div className="col-12 col-xl-5">
+          <AdminRoomAreaManager
+            areas={areas}
+            editingAreaId={editingAreaId}
+            form={areaForm}
+            onDelete={async (id) => finishContentMutation((await deleteAdminRoomArea(id)).error, () => {})}
+            onEdit={(area) => {
+              setEditingAreaId(area.id);
+              setAreaForm(roomAreaToForm(area));
+            }}
+            onFormChange={setAreaForm}
+            onSubmit={handleAreaSubmit}
+            onCancel={() => {
+              setEditingAreaId("");
+              setAreaForm(buildRoomAreaForm());
+            }}
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function AdminFaqManager({ editingFaqId, faqs, form, onCancel, onDelete, onEdit, onFormChange, onSubmit }) {
+  return (
+    <div className="card shadow-sm border-0 h-100">
+      <div className="card-body">
+        <h3 className="h5">FAQs</h3>
+        <form className="row g-3 mb-4" onSubmit={onSubmit}>
+          <div className="col-12">
+            <label className="form-label" htmlFor="faqQuestion">Question</label>
+            <input className="form-control" id="faqQuestion" required value={form.question} onChange={(event) => onFormChange((current) => ({ ...current, question: event.target.value }))} />
+          </div>
+          <div className="col-12">
+            <label className="form-label" htmlFor="faqAnswer">Answer</label>
+            <textarea className="form-control" id="faqAnswer" required rows="3" value={form.answer} onChange={(event) => onFormChange((current) => ({ ...current, answer: event.target.value }))} />
+          </div>
+          <div className="col-12 col-md-7">
+            <label className="form-label" htmlFor="faqCategory">Category</label>
+            <input className="form-control" id="faqCategory" placeholder="Rules, parking, food" value={form.category} onChange={(event) => onFormChange((current) => ({ ...current, category: event.target.value }))} />
+          </div>
+          <div className="col-12 col-md-5 d-flex align-items-end">
+            <label className="form-check">
+              <input className="form-check-input" checked={form.visible} type="checkbox" onChange={(event) => onFormChange((current) => ({ ...current, visible: event.target.checked }))} />
+              <span className="form-check-label">Visible</span>
+            </label>
+          </div>
+          <div className="col-12 d-flex gap-2">
+            <button className="btn btn-primary" type="submit">{editingFaqId ? "Update FAQ" : "Add FAQ"}</button>
+            {editingFaqId ? <button className="btn btn-outline-secondary" onClick={onCancel} type="button">Cancel</button> : null}
+          </div>
+        </form>
+        <AdminContentList
+          empty="No FAQs yet."
+          items={faqs}
+          renderItem={(faq) => (
+            <>
+              <strong>{faq.question}</strong>
+              <span>{faq.category || "FAQ"} • {faq.visible ? "Visible" : "Hidden"}</span>
+            </>
+          )}
+          onDelete={onDelete}
+          onEdit={onEdit}
+        />
+      </div>
+    </div>
+  );
+}
+
+function AdminAnnouncementManager({ announcements, editingAnnouncementId, form, onCancel, onDelete, onEdit, onFormChange, onSubmit }) {
+  return (
+    <div className="card shadow-sm border-0 h-100">
+      <div className="card-body">
+        <h3 className="h5">Real-time announcements</h3>
+        <form className="row g-3 mb-4" onSubmit={onSubmit}>
+          <div className="col-12 col-md-8">
+            <label className="form-label" htmlFor="announcementTitle">Title</label>
+            <input className="form-control" id="announcementTitle" required value={form.title} onChange={(event) => onFormChange((current) => ({ ...current, title: event.target.value }))} />
+          </div>
+          <div className="col-12 col-md-4">
+            <label className="form-label" htmlFor="announcementPriority">Priority</label>
+            <select className="form-select" id="announcementPriority" value={form.priority} onChange={(event) => onFormChange((current) => ({ ...current, priority: event.target.value }))}>
+              {announcementPriorityOptions.map((priority) => <option key={priority} value={priority}>{formatStatus(priority)}</option>)}
+            </select>
+          </div>
+          <div className="col-12">
+            <label className="form-label" htmlFor="announcementBody">Body</label>
+            <textarea className="form-control" id="announcementBody" required rows="3" value={form.body} onChange={(event) => onFormChange((current) => ({ ...current, body: event.target.value }))} />
+          </div>
+          <div className="col-12">
+            <label className="form-check">
+              <input className="form-check-input" checked={form.is_global} type="checkbox" onChange={(event) => onFormChange((current) => ({ ...current, is_global: event.target.checked }))} />
+              <span className="form-check-label">Publish globally</span>
+            </label>
+          </div>
+          <div className="col-12 d-flex gap-2">
+            <button className="btn btn-primary" type="submit">{editingAnnouncementId ? "Update announcement" : "Publish announcement"}</button>
+            {editingAnnouncementId ? <button className="btn btn-outline-secondary" onClick={onCancel} type="button">Cancel</button> : null}
+          </div>
+        </form>
+        <AdminContentList
+          empty="No announcements yet."
+          items={announcements}
+          renderItem={(announcement) => (
+            <>
+              <strong>{announcement.title}</strong>
+              <span>{formatStatus(announcement.priority)} • {announcement.event_id ? "Event" : "Global"} • {formatFullDate(announcement.created_at)}</span>
+            </>
+          )}
+          onDelete={onDelete}
+          onEdit={onEdit}
+        />
+      </div>
+    </div>
+  );
+}
+
+function AdminMapMarkerManager({ editingMarkerId, form, markers, onCancel, onDelete, onEdit, onFormChange, onSubmit }) {
+  return (
+    <div className="card shadow-sm border-0 h-100">
+      <div className="card-body">
+        <h3 className="h5">OpenStreetMap markers</h3>
+        <form className="row g-3 mb-4" onSubmit={onSubmit}>
+          <div className="col-12 col-lg-6">
+            <label className="form-label" htmlFor="markerLabel">Label</label>
+            <input className="form-control" id="markerLabel" required value={form.label} onChange={(event) => onFormChange((current) => ({ ...current, label: event.target.value }))} />
+          </div>
+          <div className="col-12 col-lg-3">
+            <label className="form-label" htmlFor="markerType">Type</label>
+            <select className="form-select" id="markerType" value={form.marker_type} onChange={(event) => onFormChange((current) => ({ ...current, marker_type: event.target.value }))}>
+              {markerTypeOptions.map((type) => <option key={type} value={type}>{formatStatus(type)}</option>)}
+            </select>
+          </div>
+          <div className="col-12 col-lg-3">
+            <label className="form-label" htmlFor="markerFloor">Floor</label>
+            <input className="form-control" id="markerFloor" placeholder="1, 2, B1" value={form.floor} onChange={(event) => onFormChange((current) => ({ ...current, floor: event.target.value }))} />
+          </div>
+          <div className="col-12 col-md-6">
+            <label className="form-label" htmlFor="markerLatitude">Latitude</label>
+            <input className="form-control" id="markerLatitude" required step="0.000001" type="number" value={form.latitude} onChange={(event) => onFormChange((current) => ({ ...current, latitude: event.target.value }))} />
+          </div>
+          <div className="col-12 col-md-6">
+            <label className="form-label" htmlFor="markerLongitude">Longitude</label>
+            <input className="form-control" id="markerLongitude" required step="0.000001" type="number" value={form.longitude} onChange={(event) => onFormChange((current) => ({ ...current, longitude: event.target.value }))} />
+          </div>
+          <div className="col-12 col-md-8">
+            <label className="form-label" htmlFor="markerDescription">Description</label>
+            <input className="form-control" id="markerDescription" value={form.description} onChange={(event) => onFormChange((current) => ({ ...current, description: event.target.value }))} />
+          </div>
+          <div className="col-6 col-md-2">
+            <label className="form-label" htmlFor="markerSort">Sort</label>
+            <input className="form-control" id="markerSort" type="number" value={form.sort_order} onChange={(event) => onFormChange((current) => ({ ...current, sort_order: event.target.value }))} />
+          </div>
+          <div className="col-6 col-md-2 d-flex align-items-end">
+            <label className="form-check">
+              <input className="form-check-input" checked={form.visible} type="checkbox" onChange={(event) => onFormChange((current) => ({ ...current, visible: event.target.checked }))} />
+              <span className="form-check-label">Visible</span>
+            </label>
+          </div>
+          <div className="col-12 d-flex gap-2">
+            <button className="btn btn-primary" type="submit">{editingMarkerId ? "Update marker" : "Add marker"}</button>
+            {editingMarkerId ? <button className="btn btn-outline-secondary" onClick={onCancel} type="button">Cancel</button> : null}
+          </div>
+        </form>
+        <AdminContentList
+          empty="No map markers yet."
+          items={markers}
+          renderItem={(marker) => (
+            <>
+              <strong>{marker.label}</strong>
+              <span>{formatStatus(marker.marker_type)} • {marker.latitude}, {marker.longitude} • {marker.visible ? "Visible" : "Hidden"}</span>
+            </>
+          )}
+          onDelete={onDelete}
+          onEdit={onEdit}
+        />
+      </div>
+    </div>
+  );
+}
+
+function AdminRoomAreaManager({ areas, editingAreaId, form, onCancel, onDelete, onEdit, onFormChange, onSubmit }) {
+  return (
+    <div className="card shadow-sm border-0 h-100">
+      <div className="card-body">
+        <h3 className="h5">Room layouts</h3>
+        <form className="row g-3 mb-4" onSubmit={onSubmit}>
+          <div className="col-12">
+            <label className="form-label" htmlFor="areaName">Area name</label>
+            <input className="form-control" id="areaName" required value={form.name} onChange={(event) => onFormChange((current) => ({ ...current, name: event.target.value }))} />
+          </div>
+          <div className="col-12 col-md-6">
+            <label className="form-label" htmlFor="areaType">Type</label>
+            <select className="form-select" id="areaType" value={form.area_type} onChange={(event) => onFormChange((current) => ({ ...current, area_type: event.target.value }))}>
+              {roomAreaTypeOptions.map((type) => <option key={type} value={type}>{formatStatus(type)}</option>)}
+            </select>
+          </div>
+          <div className="col-6 col-md-3">
+            <label className="form-label" htmlFor="areaFloor">Floor</label>
+            <input className="form-control" id="areaFloor" value={form.floor} onChange={(event) => onFormChange((current) => ({ ...current, floor: event.target.value }))} />
+          </div>
+          <div className="col-6 col-md-3">
+            <label className="form-label" htmlFor="areaSort">Sort</label>
+            <input className="form-control" id="areaSort" type="number" value={form.sort_order} onChange={(event) => onFormChange((current) => ({ ...current, sort_order: event.target.value }))} />
+          </div>
+          <div className="col-12">
+            <label className="form-label" htmlFor="areaDescription">Layout notes</label>
+            <textarea className="form-control" id="areaDescription" rows="3" value={form.description} onChange={(event) => onFormChange((current) => ({ ...current, description: event.target.value }))} />
+          </div>
+          <div className="col-12">
+            <label className="form-check">
+              <input className="form-check-input" checked={form.visible} type="checkbox" onChange={(event) => onFormChange((current) => ({ ...current, visible: event.target.checked }))} />
+              <span className="form-check-label">Visible</span>
+            </label>
+          </div>
+          <div className="col-12 d-flex gap-2">
+            <button className="btn btn-primary" type="submit">{editingAreaId ? "Update room" : "Add room"}</button>
+            {editingAreaId ? <button className="btn btn-outline-secondary" onClick={onCancel} type="button">Cancel</button> : null}
+          </div>
+        </form>
+        <AdminContentList
+          empty="No room layout areas yet."
+          items={areas}
+          renderItem={(area) => (
+            <>
+              <strong>{area.name}</strong>
+              <span>{formatStatus(area.area_type)} • Floor {area.floor || "TBA"} • {area.visible ? "Visible" : "Hidden"}</span>
+            </>
+          )}
+          onDelete={onDelete}
+          onEdit={onEdit}
+        />
+      </div>
+    </div>
+  );
+}
+
+function AdminContentList({ empty, items, onDelete, onEdit, renderItem }) {
+  if (items.length === 0) {
+    return <p className="text-secondary mb-0">{empty}</p>;
+  }
+
+  return (
+    <div className="list-group list-group-flush">
+      {items.map((item) => (
+        <div className="list-group-item px-0" key={item.id}>
+          <div className="d-flex justify-content-between gap-3 align-items-start">
+            <div className="admin-content-list-main">{renderItem(item)}</div>
+            <div className="btn-group btn-group-sm">
+              <button className="btn btn-outline-secondary" onClick={() => onEdit(item)} type="button">Edit</button>
+              <button className="btn btn-outline-danger" onClick={() => onDelete(item.id)} type="button">Delete</button>
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
   );
 }
 
@@ -1294,9 +1826,53 @@ function buildEventForm() {
     ends_at: "",
     location_name: "",
     address: "",
+    latitude: "",
+    longitude: "",
     capacity: "",
     registration_status: "draft",
     banner_url: "",
+  };
+}
+
+function buildFaqForm() {
+  return {
+    question: "",
+    answer: "",
+    category: "",
+    visible: true,
+  };
+}
+
+function buildMarkerForm() {
+  return {
+    label: "",
+    description: "",
+    marker_type: "venue",
+    latitude: "",
+    longitude: "",
+    floor: "",
+    sort_order: "0",
+    visible: true,
+  };
+}
+
+function buildRoomAreaForm() {
+  return {
+    name: "",
+    description: "",
+    floor: "",
+    area_type: "room",
+    sort_order: "0",
+    visible: true,
+  };
+}
+
+function buildAnnouncementForm() {
+  return {
+    title: "",
+    body: "",
+    priority: "normal",
+    is_global: false,
   };
 }
 
@@ -1308,9 +1884,53 @@ function eventToForm(event) {
     ends_at: toDateTimeInputValue(event.ends_at),
     location_name: event.location_name ?? "",
     address: event.address ?? "",
+    latitude: event.latitude ?? "",
+    longitude: event.longitude ?? "",
     capacity: event.capacity ?? "",
     registration_status: event.registration_status ?? "draft",
     banner_url: event.banner_url ?? "",
+  };
+}
+
+function faqToForm(faq) {
+  return {
+    question: faq.question ?? "",
+    answer: faq.answer ?? "",
+    category: faq.category ?? "",
+    visible: Boolean(faq.visible),
+  };
+}
+
+function markerToForm(marker) {
+  return {
+    label: marker.label ?? "",
+    description: marker.description ?? "",
+    marker_type: marker.marker_type ?? "venue",
+    latitude: marker.latitude ?? "",
+    longitude: marker.longitude ?? "",
+    floor: marker.floor ?? "",
+    sort_order: marker.sort_order ?? "0",
+    visible: Boolean(marker.visible),
+  };
+}
+
+function roomAreaToForm(area) {
+  return {
+    name: area.name ?? "",
+    description: area.description ?? "",
+    floor: area.floor ?? "",
+    area_type: area.area_type ?? "room",
+    sort_order: area.sort_order ?? "0",
+    visible: Boolean(area.visible),
+  };
+}
+
+function announcementToForm(announcement) {
+  return {
+    title: announcement.title ?? "",
+    body: announcement.body ?? "",
+    priority: announcement.priority ?? "normal",
+    is_global: !announcement.event_id,
   };
 }
 
@@ -1322,6 +1942,8 @@ function formToEventPayload(form) {
     ends_at: form.ends_at ? new Date(form.ends_at).toISOString() : null,
     location_name: emptyToNull(form.location_name),
     address: emptyToNull(form.address),
+    latitude: form.latitude === "" ? null : Number(form.latitude),
+    longitude: form.longitude === "" ? null : Number(form.longitude),
     capacity: form.capacity === "" ? null : Number(form.capacity),
     registration_status: form.registration_status,
     banner_url: emptyToNull(form.banner_url),
