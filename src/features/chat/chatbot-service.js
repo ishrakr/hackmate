@@ -93,7 +93,7 @@ export function answerEventQuestion({
 
 export function getSuggestedBotQuestions(event) {
   if (!event) {
-    return ["What events are live?", "How do teams work?", "Where is support?"];
+    return ["How do I join an event?", "Where is support?"];
   }
 
   return [

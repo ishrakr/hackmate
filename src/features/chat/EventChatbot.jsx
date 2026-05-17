@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
+import { useAuth } from "../auth/auth-context.jsx";
 import {
   getEvent,
   getEventAnnouncements,
   getEventFaqs,
   getEventSchedule,
   listEvents,
+  listUserEventRegistrations,
 } from "../events/event-service.js";
 import {
   answerEventQuestion,
@@ -13,6 +15,7 @@ import {
 } from "./chatbot-service.js";
 
 export function EventChatbot() {
+  const { user } = useAuth();
   const [announcements, setAnnouncements] = useState([]);
   const [draft, setDraft] = useState("");
   const [event, setEvent] = useState(null);
@@ -34,24 +37,33 @@ export function EventChatbot() {
 
     async function loadEvents() {
       setStatus("loading");
-      const { data, error } = await listEvents();
+      const [eventResult, registrationResult] = await Promise.all([
+        listEvents(),
+        listUserEventRegistrations(user.id),
+      ]);
 
       if (!isMounted) return;
 
+      const activeEventIds = new Set(
+        (registrationResult.data ?? [])
+          .filter((registration) => registration.status !== "Cancelled")
+          .map((registration) => registration.event_id),
+      );
+      const availableEvents = (eventResult.data ?? []).filter((eventChoice) => activeEventIds.has(eventChoice.id));
       const requestedEventId = new URLSearchParams(searchKey).get("event");
-      const fallbackEventId = data?.[0]?.id ?? "";
+      const fallbackEventId = availableEvents[0]?.id ?? "";
       const nextEventId =
-        data?.some((eventChoice) => eventChoice.id === requestedEventId)
+        availableEvents.some((eventChoice) => eventChoice.id === requestedEventId)
           ? requestedEventId
           : fallbackEventId;
 
-      setEvents(data ?? []);
+      setEvents(availableEvents);
       setEventId(nextEventId);
-      setMessage(error?.message ?? "");
+      setMessage(eventResult.error?.message ?? registrationResult.error?.message ?? "");
       setStatus(nextEventId ? "loadingEvent" : "ready");
 
       if (!nextEventId) {
-        setMessages([makeBotMessage("Choose an event once organizers publish one, then I can answer from its FAQ and schedule.")]);
+        setMessages([makeBotMessage("Register for an event first. I can only answer from events you are participating in.")]);
       }
     }
 
@@ -60,7 +72,7 @@ export function EventChatbot() {
     return () => {
       isMounted = false;
     };
-  }, [searchKey]);
+  }, [searchKey, user.id]);
 
   useEffect(() => {
     if (!eventId) return undefined;

@@ -63,11 +63,11 @@ import {
 } from "../features/teams/team-service.js";
 
 const bottomTabs = [
-  { to: "/", label: "Home", mark: "H" },
-  { to: "/events", label: "Events", mark: "E" },
-  { to: "/match", label: "Match", mark: "M" },
-  { to: "/chat/lobby", label: "Chat", mark: "C" },
-  { to: "/profile", label: "Me", mark: "P" },
+  { to: "/", label: "Home", mark: "⌂" },
+  { to: "/events", label: "Events", mark: "▣" },
+  { to: "/match", label: "Match", mark: "♡" },
+  { to: "/chat/lobby", label: "Chat", mark: "◉" },
+  { to: "/profile", label: "Me", mark: "●" },
 ];
 
 const sampleMembers = ["Alex", "Mina", "Jordan"];
@@ -160,7 +160,7 @@ function AuthLayout() {
 }
 
 function MobileAppLayout() {
-  const { isAuthenticated, signOut } = useAuth();
+  const { isAuthenticated, signOut, user } = useAuth();
   const [isSigningOut, setIsSigningOut] = useState(false);
 
   async function handleSignOut() {
@@ -178,14 +178,13 @@ function MobileAppLayout() {
             <span>Hackmate</span>
           </Link>
           {isAuthenticated ? (
-            <button
-              className="topbar-action"
-              disabled={isSigningOut}
-              onClick={handleSignOut}
-              type="button"
-            >
-              {isSigningOut ? "Signing out" : "Log out"}
-            </button>
+            <Link className="topbar-user" to="/profile" aria-label="Open profile">
+              {user?.user_metadata?.avatar_url ? (
+                <img src={user.user_metadata.avatar_url} alt="" />
+              ) : (
+                <span>{getUserDisplayName(user).charAt(0)}</span>
+              )}
+            </Link>
           ) : (
             <Link className="topbar-action" to="/login">
               Sign in
@@ -238,19 +237,17 @@ function HomePage() {
     <ScreenStack>
       <section className="home-hero-card native-card">
         <p className="card-label">Hackmate</p>
-        <h1>Event first. Team next.</h1>
-        <p>Join an event, set your team status, then match and chat with people at that hackathon.</p>
+        <h1>Your hackathons.</h1>
+        <p>Join events, then match and chat with participants there.</p>
         <div className="home-action-row">
           <Link className="primary-action" to="/events">Choose event</Link>
-          <Link className="secondary-action" to="/match">Match</Link>
+          <Link className="secondary-action" to="/chat/lobby">Chat</Link>
         </div>
       </section>
 
       <section className="quick-grid" aria-label="Quick actions">
         <QuickAction to="/events" label="Events" value={liveEventCount === null ? "Loading" : `${liveEventCount} live`} />
-        <QuickAction to="/teams" label="Teams" value="Create" />
-        <QuickAction to="/chat/lobby" label="Chat" value="Event" />
-        <QuickAction to="/profile" label="Profile" value="Edit" />
+        <QuickAction to="/match" label="Match" value="Team" />
       </section>
     </ScreenStack>
   );
@@ -549,6 +546,7 @@ function EventsPage() {
   const { user } = useAuth();
   const [events, setEvents] = useState([]);
   const [registrations, setRegistrations] = useState([]);
+  const [search, setSearch] = useState("");
   const [status, setStatus] = useState("loading");
   const [message, setMessage] = useState("");
   const [savingEventId, setSavingEventId] = useState("");
@@ -623,6 +621,11 @@ function EventsPage() {
   const activeRegistrations = registrations.filter((registration) => registration.status !== "Cancelled");
   const registeredEventIds = new Set(activeRegistrations.map((registration) => registration.event_id));
   const selectedEvent = events.find((event) => registeredEventIds.has(event.id));
+  const filteredEvents = events.filter((event) => {
+    const query = search.trim().toLowerCase();
+    if (!query) return true;
+    return `${event.name} ${event.location_name ?? ""} ${event.description ?? ""}`.toLowerCase().includes(query);
+  });
 
   return (
     <ScreenStack>
@@ -630,6 +633,13 @@ function EventsPage() {
         eyebrow="Events"
         title="Choose your event."
         body="Register for the hackathon you are joining. Matching unlocks after you pick an event."
+      />
+
+      <input
+        className="event-search"
+        placeholder="Search events"
+        value={search}
+        onChange={(event) => setSearch(event.target.value)}
       />
 
       {selectedEvent ? (
@@ -649,9 +659,9 @@ function EventsPage() {
           body="Admin-created hackathons will appear here when registration opens."
         />
       ) : null}
-      {events.length > 0 ? (
+      {filteredEvents.length > 0 ? (
         <div className="event-list">
-          {events.map((event) => (
+          {filteredEvents.map((event) => (
             <EventCard
               key={event.id}
               event={event}
@@ -669,6 +679,7 @@ function EventsPage() {
 
 function EventCard({ event, isRegistered, isSaving, onLeave, onRegister }) {
   const startsAt = formatDateParts(event.starts_at);
+  const endsAt = event.ends_at ? formatDateParts(event.ends_at) : null;
 
   return (
     <article className={`event-showcase-card${isRegistered ? " is-selected" : ""}`}>
@@ -680,7 +691,8 @@ function EventCard({ event, isRegistered, isSaving, onLeave, onRegister }) {
         <span className="event-main">
           <span className="status-pill">{isRegistered ? "Registered" : formatStatus(event.registration_status)}</span>
           <strong>{event.name}</strong>
-          <span>{startsAt.time} at {event.location_name || "Location TBA"}</span>
+          <span>{startsAt.time}{endsAt ? ` - ${endsAt.time}` : ""}</span>
+          <span>{event.location_name || "Location TBA"}</span>
         </span>
       </Link>
       <button
@@ -1813,14 +1825,6 @@ function ProfilePage() {
           />
         </Field>
         <div className="form-grid">
-          <Field label="Avatar URL" htmlFor="avatarUrl">
-            <input
-              id="avatarUrl"
-              inputMode="url"
-              value={form.avatar_url}
-              onChange={(event) => updateField("avatar_url", event.target.value)}
-            />
-          </Field>
           <Field label="Desired role" htmlFor="desiredRole">
             <input
               id="desiredRole"
@@ -1851,6 +1855,7 @@ function ProfilePage() {
             onChange={(event) => updateField("availability", event.target.value)}
           />
         </Field>
+        <FeaturedSkillsEditor skills={form.featured_skills} onChange={(skills) => updateField("featured_skills", skills)} />
         <section className="profile-form-section">
           <p className="card-label">Social links</p>
           <Field label="GitHub" htmlFor="githubUrl">
@@ -1878,17 +1883,6 @@ function ProfilePage() {
             />
           </Field>
         </section>
-        <label className="check-row">
-          <input
-            checked={form.looking_for_team}
-            type="checkbox"
-            onChange={(event) => {
-              updateField("looking_for_team", event.target.checked);
-              updateField("open_to_joining_team", event.target.checked);
-            }}
-          />
-          <span>I am looking for a team and can appear in matching.</span>
-        </label>
         <button className="primary-action" disabled={status === "saving" || status === "loading"} type="submit">
           {status === "saving" ? "Saving..." : "Save profile"}
         </button>
@@ -1965,9 +1959,66 @@ function ProfileLink({ href, label }) {
 
   return (
     <a className="profile-link" href={href} rel="noreferrer" target="_blank">
+      <span aria-hidden="true">{getSocialIcon(label)}</span>
       {label}
     </a>
   );
+}
+
+function FeaturedSkillsEditor({ skills = [], onChange }) {
+  const levels = ["Beginner", "Advanced", "Professional"];
+  const normalizedSkills = skills.length ? skills : [{ name: "", level: "Beginner" }];
+
+  function updateSkill(index, field, value) {
+    onChange(normalizedSkills.map((skill, skillIndex) => skillIndex === index ? { ...skill, [field]: value } : skill).slice(0, 5));
+  }
+
+  function addSkill() {
+    if (normalizedSkills.length >= 5) return;
+    onChange([...normalizedSkills, { name: "", level: "Beginner" }]);
+  }
+
+  function removeSkill(index) {
+    onChange(normalizedSkills.filter((_, skillIndex) => skillIndex !== index));
+  }
+
+  return (
+    <section className="profile-form-section skill-editor">
+      <div className="section-row">
+        <p className="card-label">Featured skills</p>
+        <button className="secondary-action" disabled={normalizedSkills.length >= 5} onClick={addSkill} type="button">Add</button>
+      </div>
+      {normalizedSkills.map((skill, index) => (
+        <div className="skill-row" key={index}>
+          <input
+            aria-label={`Skill ${index + 1}`}
+            placeholder="React, Python, UI design..."
+            value={skill.name}
+            onChange={(event) => updateSkill(index, "name", event.target.value)}
+          />
+          <input
+            aria-label={`Skill level ${index + 1}`}
+            max="2"
+            min="0"
+            type="range"
+            value={Math.max(0, levels.indexOf(skill.level))}
+            onChange={(event) => updateSkill(index, "level", levels[Number(event.target.value)])}
+          />
+          <div className="skill-row-footer">
+            <span>{skill.level || "Beginner"}</span>
+            <button className="link-button" onClick={() => removeSkill(index)} type="button">Remove</button>
+          </div>
+        </div>
+      ))}
+    </section>
+  );
+}
+
+function getSocialIcon(label) {
+  if (label === "GitHub") return "◆";
+  if (label === "LinkedIn") return "in";
+  if (label === "Devpost") return "D";
+  return "↗";
 }
 
 function ChoiceCard({ title, body, action, to }) {
@@ -2134,6 +2185,9 @@ function profileToForm(profile) {
     looking_for_team: Boolean(profile?.looking_for_team),
     open_to_joining_team: Boolean(profile?.open_to_joining_team),
     availability: profile?.availability ?? "",
+    featured_skills: Array.isArray(profile?.contact_preferences?.featured_skills)
+      ? profile.contact_preferences.featured_skills.slice(0, 5)
+      : [],
   };
 }
 
@@ -2151,7 +2205,12 @@ function formToProfile(form, user) {
     looking_for_team: form.looking_for_team,
     open_to_joining_team: form.open_to_joining_team,
     availability: emptyToNull(form.availability),
-    contact_preferences: {},
+    contact_preferences: {
+      featured_skills: (form.featured_skills ?? [])
+        .filter((skill) => skill.name?.trim())
+        .slice(0, 5)
+        .map((skill) => ({ name: skill.name.trim(), level: skill.level || "Beginner" })),
+    },
   };
 }
 
