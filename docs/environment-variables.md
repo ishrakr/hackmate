@@ -9,6 +9,7 @@ Use `.env.example` as the local template, then restart Vite after changing any `
 ```txt
 VITE_SUPABASE_URL=
 VITE_SUPABASE_ANON_KEY=
+VITE_APP_MODE=
 SUPABASE_SERVICE_ROLE_KEY=
 GITHUB_CLIENT_ID=
 GITHUB_CLIENT_SECRET=
@@ -24,6 +25,7 @@ QR_TOKEN_SECRET=
 
 - `VITE_SUPABASE_URL`: Public Supabase project URL used by the frontend.
 - `VITE_SUPABASE_ANON_KEY`: Public Supabase anon key used by the frontend with RLS.
+- `VITE_APP_MODE`: Optional frontend mode. Set to `admin` for the separate admin container so `/` redirects into the admin portal.
 - `SUPABASE_SERVICE_ROLE_KEY`: Private key for trusted backend operations only.
 - `GITHUB_CLIENT_ID`: GitHub OAuth app client ID.
 - `GITHUB_CLIENT_SECRET`: GitHub OAuth app client secret.
@@ -40,9 +42,10 @@ Configure these redirect URLs in Supabase Auth for local development:
 
 ```txt
 http://localhost:5173/auth/callback
+http://localhost:5174/auth/callback
 ```
 
-Production deployments should add the deployed app URL with the same `/auth/callback` path.
+Production deployments should add the deployed participant and admin URLs with the same `/auth/callback` path.
 
 ## GitHub Signup
 
@@ -65,6 +68,15 @@ VITE_SUPABASE_ANON_KEY=your-public-anon-key
 ```
 
 The `VITE_` Supabase values are passed to the dev container runtime. For production Docker builds, `VITE_SUPABASE_URL` is passed directly and `VITE_SUPABASE_ANON_KEY` is mapped to the internal Docker build argument `SUPABASE_PUBLIC_ANON` before Vite runs. Do not pass `SUPABASE_SERVICE_ROLE_KEY` into frontend Docker builds.
+
+Compose starts two frontend containers by default:
+
+```txt
+web: http://localhost:5173
+admin: http://localhost:5174
+```
+
+The `admin` service sets `VITE_APP_MODE=admin` automatically.
 
 ## Security Rules
 
