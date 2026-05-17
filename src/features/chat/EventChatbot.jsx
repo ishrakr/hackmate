@@ -149,6 +149,12 @@ export function EventChatbot({ compact = false, eventId: controlledEventId = nul
   }
 
   function askQuestion(question) {
+    if (question?.preventDefault) {
+      question.preventDefault();
+      question.stopPropagation?.();
+      return;
+    }
+
     const prompt = question.trim();
     if (!prompt || status !== "ready") return;
 

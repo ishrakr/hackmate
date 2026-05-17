@@ -1927,7 +1927,7 @@ function ChatPage({ title }) {
     <ScreenStack className="chat-screen-stack">
       <section className="chat-hub-shell">
         <header className="chat-hub-topbar">
-          <div>
+          <div className="chat-hub-title">
             <p className="card-label">Chat</p>
             <h1>{selectedEvent?.name ?? getChatChannelTitle(channel)}</h1>
           </div>
@@ -2052,6 +2052,7 @@ function ProfilePage() {
 
   const displayName = form.display_name || getUserDisplayName(user);
   const avatarUrl = form.avatar_url || user?.user_metadata?.avatar_url;
+  const profileSkills = normalizeProfileSkills(form.featured_skills);
 
   return (
     <ScreenStack>
@@ -2065,10 +2066,20 @@ function ProfilePage() {
           <div>
             <p className="card-label">Profile</p>
             <h1>{displayName}</h1>
-            <p>{form.featured_skills?.length ? `${form.featured_skills.length} featured skills` : "Add featured skills"}</p>
+            <p>{profileSkills.length ? `${profileSkills.length} skills` : "Add skills"}</p>
           </div>
         </div>
         <p>{form.bio || "Add a short intro so teams know what you want to build."}</p>
+        {profileSkills.length > 0 ? (
+          <div className="profile-skill-badges" aria-label="Skills">
+            {profileSkills.map((skill) => (
+              <span key={`${skill.name}-${skill.level}`}>
+                {skill.name}
+                <small>{skill.level}</small>
+              </span>
+            ))}
+          </div>
+        ) : null}
         <div className="profile-link-grid">
           <ProfileLink label="GitHub" href={form.github_url} />
           <ProfileLink label="LinkedIn" href={form.linkedin_url} />
@@ -2205,15 +2216,17 @@ function ProfileLink({ href, label }) {
 
 function FeaturedSkillsEditor({ skills = [], onChange }) {
   const levels = ["Beginner", "Advanced", "Professional"];
-  const normalizedSkills = skills.slice(0, 5);
-
-  function updateSkill(index, field, value) {
-    onChange(normalizedSkills.map((skill, skillIndex) => skillIndex === index ? { ...skill, [field]: value } : skill).slice(0, 5));
-  }
+  const [draftSkill, setDraftSkill] = useState("");
+  const [draftLevel, setDraftLevel] = useState("Beginner");
+  const normalizedSkills = normalizeProfileSkills(skills);
 
   function addSkill() {
-    if (normalizedSkills.length >= 5) return;
-    onChange([...normalizedSkills, { name: "", level: "Beginner" }]);
+    const name = draftSkill.trim();
+    if (!name) return;
+
+    onChange([...normalizedSkills, { name, level: draftLevel }]);
+    setDraftSkill("");
+    setDraftLevel("Beginner");
   }
 
   function removeSkill(index) {
@@ -2225,35 +2238,57 @@ function FeaturedSkillsEditor({ skills = [], onChange }) {
       <div className="section-row">
         <div>
           <p className="card-label">Featured skills</p>
-          <small>Up to 5 skills shown in matching.</small>
+          <small>Shown as badges on your profile.</small>
         </div>
-        <button className="secondary-action" disabled={normalizedSkills.length >= 5} onClick={addSkill} type="button">Add skill</button>
+        <button className="secondary-action" disabled={!draftSkill.trim()} onClick={addSkill} type="button">Add skill</button>
+      </div>
+      <div className="skill-row">
+        <input
+          aria-label="Skill name"
+          placeholder="React, Python, UI design..."
+          value={draftSkill}
+          onChange={(event) => setDraftSkill(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === "Enter") {
+              event.preventDefault();
+              addSkill();
+            }
+          }}
+        />
+        <input
+          aria-label="Skill level"
+          max="2"
+          min="0"
+          type="range"
+          value={Math.max(0, levels.indexOf(draftLevel))}
+          onChange={(event) => setDraftLevel(levels[Number(event.target.value)])}
+        />
+        <div className="skill-row-footer">
+          <span>{draftLevel}</span>
+        </div>
       </div>
       {normalizedSkills.length === 0 ? <p className="fine-print">Add your best skills so teammates know what you bring.</p> : null}
-      {normalizedSkills.map((skill, index) => (
-        <div className="skill-row" key={index}>
-          <input
-            aria-label={`Skill ${index + 1}`}
-            placeholder="React, Python, UI design..."
-            value={skill.name}
-            onChange={(event) => updateSkill(index, "name", event.target.value)}
-          />
-          <input
-            aria-label={`Skill level ${index + 1}`}
-            max="2"
-            min="0"
-            type="range"
-            value={Math.max(0, levels.indexOf(skill.level))}
-            onChange={(event) => updateSkill(index, "level", levels[Number(event.target.value)])}
-          />
-          <div className="skill-row-footer">
-            <span>{skill.level || "Beginner"}</span>
-            <button className="link-button" onClick={() => removeSkill(index)} type="button">Remove</button>
-          </div>
+      {normalizedSkills.length > 0 ? (
+        <div className="profile-skill-badges profile-skill-badges-edit" aria-label="Current skills">
+          {normalizedSkills.map((skill, index) => (
+            <span key={`${skill.name}-${skill.level}-${index}`}>
+              {skill.name}
+              <small>{skill.level}</small>
+              <button aria-label={`Remove ${skill.name}`} onClick={() => removeSkill(index)} type="button">
+                <i className="fa-solid fa-xmark" aria-hidden="true" />
+              </button>
+            </span>
+          ))}
         </div>
-      ))}
+      ) : null}
     </section>
   );
+}
+
+function normalizeProfileSkills(skills = []) {
+  return (skills ?? [])
+    .filter((skill) => skill?.name?.trim())
+    .map((skill) => ({ name: skill.name.trim(), level: skill.level || "Beginner" }));
 }
 
 function getSocialIcon(label) {
@@ -2425,7 +2460,7 @@ function profileToForm(profile) {
     looking_for_team: Boolean(profile?.looking_for_team),
     open_to_joining_team: Boolean(profile?.open_to_joining_team),
     featured_skills: Array.isArray(profile?.contact_preferences?.featured_skills)
-      ? profile.contact_preferences.featured_skills.slice(0, 5)
+      ? normalizeProfileSkills(profile.contact_preferences.featured_skills)
       : [],
   };
 }
@@ -2444,7 +2479,6 @@ function formToProfile(form, user) {
     contact_preferences: {
       featured_skills: (form.featured_skills ?? [])
         .filter((skill) => skill.name?.trim())
-        .slice(0, 5)
         .map((skill) => ({ name: skill.name.trim(), level: skill.level || "Beginner" })),
     },
   };

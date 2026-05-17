@@ -1058,6 +1058,54 @@ h2 {
   width: 100%;
 }
 
+.profile-skill-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  width: 100%;
+}
+
+.profile-skill-badges span {
+  display: inline-flex;
+  gap: 0.4rem;
+  align-items: center;
+  min-height: 2rem;
+  padding: 0.42rem 0.65rem;
+  color: #fff;
+  font-size: 0.82rem;
+  font-weight: 900;
+  background: rgba(255, 255, 255, 0.17);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 999px;
+}
+
+.profile-skill-badges small {
+  color: rgba(255, 255, 255, 0.76);
+  font-size: 0.68rem;
+  font-weight: 850;
+}
+
+.profile-skill-badges-edit span {
+  color: var(--color-primary-dark);
+  background: #eef2ff;
+  border-color: rgba(52, 87, 245, 0.1);
+}
+
+.profile-skill-badges-edit small {
+  color: var(--color-muted);
+}
+
+.profile-skill-badges button {
+  display: grid;
+  width: 1.35rem;
+  height: 1.35rem;
+  place-items: center;
+  color: inherit;
+  font-size: 0.72rem;
+  background: rgba(255, 255, 255, 0.6);
+  border-radius: 999px;
+}
+
 .profile-link {
   display: inline-flex;
   gap: 0.35rem;
@@ -1341,14 +1389,22 @@ h2 {
   padding: 0.35rem 0.25rem 0;
 }
 
+.chat-hub-title {
+  min-width: 0;
+}
+
 .chat-hub-topbar h1,
 .chat-hub-topbar p {
   margin-bottom: 0;
 }
 
 .chat-hub-topbar h1 {
-  font-size: clamp(1.25rem, 6vw, 1.8rem);
-  line-height: 1;
+  overflow: hidden;
+  max-width: 16rem;
+  font-size: clamp(1rem, 4vw, 1.25rem);
+  line-height: 1.1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .chat-event-select {
@@ -1530,6 +1586,10 @@ h2 {
 
 .bot-message-list {
   min-height: 18rem;
+}
+
+.chat-hub-shell .bot-message-list {
+  min-height: 0;
 }
 
 .chat-message {
