@@ -1858,26 +1858,7 @@ function ChatPage({ title }) {
   const type = title.toLowerCase();
 
   return (
-    <ScreenStack>
-      <ScreenHeader
-        eyebrow="Chat"
-        title={title}
-        body="Fast, focused conversations for the lobby, teams, and organizer support."
-      />
-      <section className="native-card compact-card chat-command-strip">
-        <Link className="secondary-action" to="/chat/bot">
-          Ask Hackmate Bot
-        </Link>
-        {type === "support" ? (
-          <Link className="secondary-action" to="/chat/lobby">
-            Open lobby
-          </Link>
-        ) : (
-          <Link className="secondary-action" to="/chat/support">
-            Organizer support
-          </Link>
-        )}
-      </section>
+    <ScreenStack className="chat-screen-stack">
       <EventChatRoom title={type === "support" ? "Organizer support" : title} type={type} />
     </ScreenStack>
   );
@@ -2068,8 +2049,8 @@ function SettingsPage() {
   );
 }
 
-function ScreenStack({ children }) {
-  return <div className="screen-stack">{children}</div>;
+function ScreenStack({ children, className = "" }) {
+  return <div className={`screen-stack${className ? ` ${className}` : ""}`}>{children}</div>;
 }
 
 function ScreenHeader({ eyebrow, title, body }) {

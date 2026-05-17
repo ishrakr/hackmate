@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { useAuth } from "../auth/auth-context.jsx";
 import { listEvents, listUserEventRegistrations } from "../events/event-service.js";
 import {
@@ -9,7 +9,7 @@ import {
   subscribeToChatMessages,
 } from "./chat-service.js";
 
-export function ChatRoom({ eventId = null, teamId = null, title, type }) {
+export function ChatRoom({ eventId = null, teamId = null, title, type, headerAccessory = null }) {
   const { user } = useAuth();
   const [chat, setChat] = useState(null);
   const [draft, setDraft] = useState("");
@@ -145,9 +145,12 @@ export function ChatRoom({ eventId = null, teamId = null, title, type }) {
           <p className="card-label">{type}</p>
           <h2>{title}</h2>
         </div>
-        <span className={`live-dot${isReady ? " is-live" : ""}`}>
-          {isReady ? "Live" : "Connecting"}
-        </span>
+        <div className="chat-panel-actions">
+          {headerAccessory}
+          <span className={`live-dot${isReady ? " is-live" : ""}`}>
+            {isReady ? "Live" : "Connecting"}
+          </span>
+        </div>
       </div>
 
       <div className="message-list" aria-live="polite">
@@ -348,21 +351,35 @@ export function EventChatRoom({ title, type = "lobby" }) {
   }
 
   return (
-    <>
+    <section className="chat-page-shell">
       <EventChannelPicker
         events={events}
         selectedEventId={selectedEventId}
         onChange={handleEventChange}
+        type={type}
       />
       {selectedEventId ? (
         <ChatRoom
           key={`${type}-${selectedEventId}`}
           eventId={selectedEventId}
-          title={title}
+          title={events.find((event) => event.id === selectedEventId)?.name ?? title}
           type={type}
+          headerAccessory={
+            type === "support" ? (
+              <Link className="chat-header-link" to={`/chat/lobby?event=${selectedEventId}`}>Lobby</Link>
+            ) : (
+              <Link className="chat-header-link" to="/chat/bot">Bot</Link>
+            )
+          }
         />
       ) : null}
-    </>
+      {type !== "support" && selectedEventId ? (
+        <Link className="support-fab" to={`/chat/support?event=${selectedEventId}`}>
+          <i className="fa-solid fa-headset" aria-hidden="true" />
+          Support
+        </Link>
+      ) : null}
+    </section>
   );
 }
 
@@ -394,14 +411,15 @@ function ChatSystemMessage({ body }) {
   return <p className="chat-system-message">{body}</p>;
 }
 
-function EventChannelPicker({ events, selectedEventId, onChange }) {
+function EventChannelPicker({ events, selectedEventId, onChange, type }) {
   const selectedEvent = events.find((event) => event.id === selectedEventId);
 
   return (
     <section className="chat-event-card">
       <div>
-        <p className="card-label">Event channel</p>
+        <p className="card-label">Current event channel</p>
         <h2>{selectedEvent?.name ?? "Choose event"}</h2>
+        <p>{type === "support" ? "Organizer support" : "Lobby chat"}</p>
       </div>
       <label className="form-field compact-selector" htmlFor="chatEvent">
         <span>Switch event</span>
