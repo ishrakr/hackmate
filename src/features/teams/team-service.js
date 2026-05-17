@@ -135,7 +135,10 @@ export async function createTeamJoinToken(teamId, userId) {
 export async function getTeamByJoinToken(token) {
   if (!supabase) return { data: null, error: null };
 
-  const tokenHash = await hashToken(token);
+  const cleanToken = decodeURIComponent(String(token ?? "").trim());
+  if (!cleanToken) return { data: null, error: null };
+
+  const tokenHash = await hashToken(cleanToken);
   const { data, error } = await supabase
     .from("team_qr_tokens")
     .select(`id,team_id,expires_at,teams(${teamColumns},events(id,name,starts_at,location_name))`)
