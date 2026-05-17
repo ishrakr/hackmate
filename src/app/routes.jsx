@@ -172,7 +172,7 @@ function MobileAppLayout() {
       <div className="phone-shell">
         <header className="app-topbar">
           <Link className="app-brand" to="/" aria-label="Hackmate home">
-            <span className="app-brand-mark">H</span>
+            <img className="app-brand-mark" src="/brand/hackmate-logo.png" alt="" />
             <span>Hackmate</span>
           </Link>
           {isAuthenticated ? (
@@ -321,7 +321,7 @@ function AuthPage() {
     <div className="login-page-stack">
       <section className="native-card login-card">
         <Link className="auth-brand" to="/" aria-label="Hackmate home">
-          <span className="app-brand-mark">H</span>
+          <img className="app-brand-mark" src="/brand/hackmate-logo.png" alt="" />
           <span>Hackmate</span>
         </Link>
         <h1>Build your hackathon crew.</h1>

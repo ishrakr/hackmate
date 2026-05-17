@@ -111,7 +111,7 @@ export function AdminLayout() {
       <aside className="admin-sidebar">
         <div className="admin-sidebar-top">
           <Link className="admin-brand" to={adminPath()}>
-            <span className="app-brand-mark">H</span>
+            <img className="app-brand-mark" src="/brand/hackmate-logo.png" alt="" />
             <span>Hackmate Admin</span>
           </Link>
           <p className="admin-sidebar-copy">
