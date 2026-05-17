@@ -110,7 +110,7 @@ function MobileAppLayout() {
       <div className="phone-shell">
         <header className="app-topbar">
           <Link className="app-brand" to="/" aria-label="Hackmate home">
-            <span className="app-brand-mark">H</span>
+            <BrandLogo />
             <span>Hackmate</span>
           </Link>
           {isAuthenticated ? (
@@ -1279,7 +1279,8 @@ function AdminLayout() {
     <div className="admin-shell">
       <aside className="admin-sidebar">
         <Link className="admin-brand" to="/admin">
-          Hackmate Admin
+          <BrandLogo className="admin-brand-logo" />
+          <span>Hackmate Admin</span>
         </Link>
         <nav className="nav flex-column gap-2" aria-label="Admin navigation">
           <NavLink className="btn btn-outline-light text-start" to="/admin/events">
@@ -1483,6 +1484,18 @@ function AdminTablePage({ title }) {
         </table>
       </div>
     </section>
+  );
+}
+
+function BrandLogo({ className = "app-brand-logo" }) {
+  return (
+    <img
+      alt=""
+      className={className}
+      height={34}
+      src="/logo.png"
+      width={34}
+    />
   );
 }
 
