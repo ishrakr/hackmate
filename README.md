@@ -1,9 +1,7 @@
 # Hackmate
 
-# AUTHORS:
-Ishrak Rahman
-Abdullah Asraf Abir
-Huzaifa Quaid Johar
+![image](img/Hackmate_Cover_1.png)
+
 
 Hackmate is a mobile-first hackathon companion web application for participants, teams, organizers, and admins. It should feel like a native mobile application on Android and iOS browsers while supporting a separate Bootstrap admin portal for operations.
 
