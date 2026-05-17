@@ -28,6 +28,15 @@
 - Verify LLM API key is set only in trusted backend contexts.
 - Verify Docker image builds successfully.
 
+## Container Layout
+
+The frontend can be deployed as separate participant and admin containers from the same source image.
+
+- Participant container: build normally and serve the mobile app.
+- Admin container: build with `VITE_APP_MODE=admin` so the root path redirects to `/admin`.
+
+For local Docker development, `docker compose up --build` exposes the participant app on `5173` and the admin portal on `5174`.
+
 ## Monitoring Recommendations
 
 - Track authentication failures.

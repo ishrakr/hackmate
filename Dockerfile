@@ -9,14 +9,17 @@ RUN --mount=type=cache,target=/root/.npm \
 FROM deps AS dev
 COPY . .
 EXPOSE 5173
+EXPOSE 5174
 CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0"]
 
 FROM deps AS build
 ARG VITE_SUPABASE_URL
 ARG SUPABASE_PUBLIC_ANON
+ARG VITE_APP_MODE
 COPY . .
 RUN VITE_SUPABASE_URL="$VITE_SUPABASE_URL" \
     VITE_SUPABASE_ANON_KEY="$SUPABASE_PUBLIC_ANON" \
+    VITE_APP_MODE="$VITE_APP_MODE" \
     npm run build
 
 FROM nginx:1.27-alpine AS production

@@ -39,6 +39,13 @@ npm run dev
 docker compose up --build
 ```
 
+Docker Compose exposes the participant app and admin portal as separate dev containers:
+
+```txt
+Participant app: http://localhost:5173
+Admin portal: http://localhost:5174
+```
+
 ```sh
 npm run build
 docker compose config

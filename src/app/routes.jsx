@@ -20,12 +20,29 @@ import {
   upsertFeedback,
 } from "../features/events/event-service.js";
 import {
+  createSwipe,
+  getMatchingContext,
+  listCandidates,
+} from "../features/matching/matching-service.js";
+import {
   buildDefaultProfile,
   getProfile,
   upsertProfile,
 } from "../features/profiles/profile-service.js";
 import {
+  AdminDashboardPage,
+  AdminEventEditorPage,
+  AdminEventsPage,
+  AdminLayout,
+  AdminParticipantsPage,
+  AdminTablePage,
+  RequireAdmin,
+} from "../features/admin/admin-portal.jsx";
+import {
+  createJoinRequest,
   createTeam,
+  createTeamJoinToken,
+  getTeamByJoinToken,
   getTeam,
   listUserTeams,
   updateTeam,
@@ -39,69 +56,56 @@ const bottomTabs = [
   { to: "/profile", label: "Me", mark: "P" },
 ];
 
-const sampleEvents = [
-  {
-    id: "starter",
-    name: "Starter Hackathon",
-    date: "Sat, Jun 8",
-    time: "9:00 AM",
-    place: "Innovation Hall",
-    status: "Registration open",
-  },
-  {
-    id: "ai-build",
-    name: "AI Build Weekend",
-    date: "Fri, Jul 12",
-    time: "6:00 PM",
-    place: "Downtown Lab",
-    status: "Waitlist soon",
-  },
-];
-
 const sampleMembers = ["Alex", "Mina", "Jordan"];
+const isAdminContainer = import.meta.env.VITE_APP_MODE === "admin";
+
+const mobileAppRoute = {
+  path: "/",
+  element: <MobileAppLayout />,
+  errorElement: <NotFoundPage />,
+  children: [
+    { index: true, element: isAdminContainer ? <Navigate replace to="/admin" /> : <HomePage /> },
+    { path: "login", element: <AuthPage /> },
+    { path: "auth/callback", element: <AuthCallbackPage /> },
+    { path: "onboarding", element: <RequireAuth><OnboardingPage /></RequireAuth> },
+    { path: "events", element: <RequireAuth><EventsPage /></RequireAuth> },
+    { path: "events/:eventId", element: <RequireAuth><EventDetailPage /></RequireAuth> },
+    { path: "events/:eventId/map", element: <RequireAuth><EventSubPage title="Map and Parking" /></RequireAuth> },
+    { path: "events/:eventId/schedule", element: <RequireAuth><EventSubPage title="Schedule" /></RequireAuth> },
+    { path: "events/:eventId/faq", element: <RequireAuth><EventSubPage title="FAQ" /></RequireAuth> },
+    { path: "events/:eventId/feedback", element: <RequireAuth><EventSubPage title="Feedback" /></RequireAuth> },
+    { path: "match", element: <RequireAuth><MatchPage /></RequireAuth> },
+    { path: "teams", element: <RequireAuth><TeamsPage /></RequireAuth> },
+    { path: "teams/:teamId", element: <RequireAuth><TeamDetailPage /></RequireAuth> },
+    { path: "teams/:teamId/chat", element: <RequireAuth><TeamChatPage /></RequireAuth> },
+    { path: "join-team/:token", element: <RequireAuth><JoinTeamPage /></RequireAuth> },
+    { path: "chat/lobby", element: <RequireAuth><ChatPage title="Lobby" /></RequireAuth> },
+    { path: "chat/support", element: <RequireAuth><ChatPage title="Support" /></RequireAuth> },
+    { path: "chat/bot", element: <RequireAuth><ChatbotPage /></RequireAuth> },
+    { path: "profile", element: <RequireAuth><ProfilePage /></RequireAuth> },
+    { path: "settings", element: <RequireAuth><SettingsPage /></RequireAuth> },
+    { path: "*", element: <NotFoundPage /> },
+  ],
+};
+
+const adminRoute = {
+  path: "/admin",
+  element: <RequireAdmin><AdminLayout /></RequireAdmin>,
+  children: [
+    { index: true, element: <AdminDashboardPage /> },
+    { path: "events", element: <AdminEventsPage /> },
+    { path: "events/new", element: <AdminEventEditorPage /> },
+    { path: "events/:eventId/edit", element: <AdminEventEditorPage /> },
+    { path: "events/:eventId/participants", element: <AdminParticipantsPage /> },
+    { path: "users", element: <AdminTablePage resource="users" title="Users" /> },
+    { path: "sessions", element: <AdminTablePage resource="sessions" title="Sessions" /> },
+    { path: "audit-logs", element: <AdminTablePage resource="audit-logs" title="Audit Logs" /> },
+  ],
+};
 
 export const router = createBrowserRouter([
-  {
-    path: "/",
-    element: <MobileAppLayout />,
-    errorElement: <NotFoundPage />,
-    children: [
-      { index: true, element: <HomePage /> },
-      { path: "login", element: <AuthPage /> },
-      { path: "auth/callback", element: <AuthCallbackPage /> },
-      { path: "onboarding", element: <RequireAuth><OnboardingPage /></RequireAuth> },
-      { path: "events", element: <RequireAuth><EventsPage /></RequireAuth> },
-      { path: "events/:eventId", element: <RequireAuth><EventDetailPage /></RequireAuth> },
-      { path: "events/:eventId/map", element: <RequireAuth><EventSubPage title="Map and Parking" /></RequireAuth> },
-      { path: "events/:eventId/schedule", element: <RequireAuth><EventSubPage title="Schedule" /></RequireAuth> },
-      { path: "events/:eventId/faq", element: <RequireAuth><EventSubPage title="FAQ" /></RequireAuth> },
-      { path: "events/:eventId/feedback", element: <RequireAuth><EventSubPage title="Feedback" /></RequireAuth> },
-      { path: "match", element: <RequireAuth><MatchPage /></RequireAuth> },
-      { path: "teams", element: <RequireAuth><TeamsPage /></RequireAuth> },
-      { path: "teams/:teamId", element: <RequireAuth><TeamDetailPage /></RequireAuth> },
-      { path: "teams/:teamId/chat", element: <RequireAuth><TeamChatPage /></RequireAuth> },
-      { path: "join-team/:token", element: <RequireAuth><JoinTeamPage /></RequireAuth> },
-      { path: "chat/lobby", element: <RequireAuth><ChatPage title="Lobby" /></RequireAuth> },
-      { path: "chat/support", element: <RequireAuth><ChatPage title="Support" /></RequireAuth> },
-      { path: "chat/bot", element: <RequireAuth><ChatbotPage /></RequireAuth> },
-      { path: "profile", element: <RequireAuth><ProfilePage /></RequireAuth> },
-      { path: "settings", element: <RequireAuth><SettingsPage /></RequireAuth> },
-      { path: "*", element: <NotFoundPage /> },
-    ],
-  },
-  {
-    path: "/admin",
-    element: <RequireAdmin><AdminLayout /></RequireAdmin>,
-    children: [
-      { index: true, element: <AdminDashboardPage /> },
-      { path: "events", element: <AdminEventsPage /> },
-      { path: "events/new", element: <AdminEventCreatePage /> },
-      { path: "events/:eventId/participants", element: <AdminParticipantsPage /> },
-      { path: "users", element: <AdminTablePage title="Users" /> },
-      { path: "sessions", element: <AdminTablePage title="Sessions" /> },
-      { path: "audit-logs", element: <AdminTablePage title="Audit Logs" /> },
-    ],
-  },
+  mobileAppRoute,
+  adminRoute,
 ]);
 
 function MobileAppLayout() {
@@ -375,54 +379,6 @@ function RequireAuth({ children }) {
   return children;
 }
 
-function RequireAdmin({ children }) {
-  const location = useLocation();
-  const {
-    isAuthenticated,
-    isLoading,
-    isSupabaseConfigured,
-    role,
-    roles,
-    user,
-  } = useAuth();
-
-  if (isLoading) {
-    return (
-      <AdminGatePage
-        eyebrow="Admin"
-        title="Checking admin access."
-        body="Hackmate is restoring your Supabase Auth session before opening the admin portal."
-      />
-    );
-  }
-
-  if (!isSupabaseConfigured) {
-    return (
-      <AdminGatePage
-        eyebrow="Setup"
-        title="Supabase is not configured."
-        body="Admin routes require VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY so Hackmate can validate sessions."
-      />
-    );
-  }
-
-  if (!isAuthenticated) {
-    return <Navigate replace state={{ from: location }} to="/login" />;
-  }
-
-  if (!roles.includes("admin")) {
-    return (
-      <AdminGatePage
-        eyebrow="Admin"
-        title="Admin access required."
-        body={`Signed in as ${user?.email ?? "this user"} with role ${role ?? "none"}. Add an admin role in Supabase metadata before using this portal.`}
-      />
-    );
-  }
-
-  return children;
-}
-
 function AuthStatusScreen({ eyebrow, title, body }) {
   return (
     <ScreenStack>
@@ -466,20 +422,6 @@ function SupabaseConfigNotice() {
   );
 }
 
-function AdminGatePage({ eyebrow, title, body }) {
-  return (
-    <div className="admin-shell">
-      <main className="container py-5">
-        <p className="text-uppercase fw-semibold text-secondary mb-2">{eyebrow}</p>
-        <h1 className="display-6 fw-bold">{title}</h1>
-        <p className="lead text-secondary">{body}</p>
-        <Link className="btn btn-primary" to="/login">
-          Open sign in
-        </Link>
-      </main>
-    </div>
-  );
-}
 
 function OnboardingPage() {
   const { user } = useAuth();
@@ -920,6 +862,94 @@ function FaqList({ items }) {
 }
 
 function MatchPage() {
+  const { user } = useAuth();
+  const [actors, setActors] = useState([]);
+  const [actorIndex, setActorIndex] = useState(0);
+  const [candidates, setCandidates] = useState([]);
+  const [candidateIndex, setCandidateIndex] = useState(0);
+  const [status, setStatus] = useState("loading");
+  const [message, setMessage] = useState("");
+
+  const actor = actors[actorIndex] ?? null;
+  const candidate = candidates[candidateIndex] ?? null;
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadContext() {
+      setStatus("loading");
+      const { data, error } = await getMatchingContext(user.id);
+
+      if (!isMounted) return;
+
+      if (error) {
+        setMessage(error.message);
+        setActors([]);
+      } else {
+        setActors(data.actors);
+        setMessage("");
+      }
+
+      setStatus("idle");
+    }
+
+    loadContext();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [user.id]);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadCandidates() {
+      if (!actor) {
+        setCandidates([]);
+        return;
+      }
+
+      setStatus("loading-candidates");
+      const { data, error } = await listCandidates(actor, user.id);
+
+      if (!isMounted) return;
+
+      if (error) {
+        setMessage(error.message);
+        setCandidates([]);
+      } else {
+        setCandidates(data);
+        setCandidateIndex(0);
+        setMessage("");
+      }
+
+      setStatus("idle");
+    }
+
+    loadCandidates();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [actor, user.id]);
+
+  async function handleSwipe(direction) {
+    if (!actor || !candidate) return;
+
+    setStatus("saving");
+    setMessage("");
+    const { error } = await createSwipe(actor, candidate, direction);
+
+    if (error) {
+      setMessage(error.message);
+      setStatus("idle");
+      return;
+    }
+
+    setCandidateIndex((current) => current + 1);
+    setStatus("idle");
+  }
+
   return (
     <ScreenStack>
       <ScreenHeader
@@ -928,27 +958,45 @@ function MatchPage() {
         body="Solo participants looking for a team and teams recruiting members can enter this pool. Complete teams stay out."
       />
 
-      <section className="swipe-card" aria-label="Sample match card">
-        <div className="swipe-card-top">
-          <span className="avatar-circle">A</span>
-          <span className="status-pill">Looking for team</span>
-        </div>
-        <h2>Avery Chen</h2>
-        <p>Frontend developer with React, maps, and realtime UI experience.</p>
-        <div className="chip-row">
-          <span>React: Advanced</span>
-          <span>UX: Intermediate</span>
-          <span>Supabase: Beginner</span>
-        </div>
-        <div className="swipe-actions">
-          <button className="round-action reject" type="button" aria-label="Skip profile">
-            No
-          </button>
-          <button className="round-action accept" type="button" aria-label="Express interest">
-            Yes
-          </button>
-        </div>
-      </section>
+      {message ? <p className="auth-error" role="alert">{message}</p> : null}
+      {actors.length > 1 ? (
+        <section className="native-card compact-card">
+          <Field label="Matching as" htmlFor="matchActor">
+            <select
+              id="matchActor"
+              value={actorIndex}
+              onChange={(event) => setActorIndex(Number(event.target.value))}
+            >
+              {actors.map((option, index) => (
+                <option key={`${option.type}-${option.id}`} value={index}>{option.label}</option>
+              ))}
+            </select>
+          </Field>
+        </section>
+      ) : null}
+      {status === "loading" || status === "loading-candidates" ? (
+        <LoadingCard label="Match" body="Loading eligible matches." />
+      ) : null}
+      {status === "idle" && actors.length === 0 ? (
+        <EmptyCard
+          title="Matching is locked."
+          body="Mark yourself as looking for a team or set one of your teams to recruiting before swiping."
+        />
+      ) : null}
+      {status === "idle" && actor && !candidate ? (
+        <EmptyCard
+          title="No candidates right now."
+          body="You have reviewed the current eligible pool. New people and recruiting teams will appear here."
+        />
+      ) : null}
+      {candidate ? (
+        <MatchCard
+          actor={actor}
+          candidate={candidate}
+          disabled={status === "saving"}
+          onSwipe={handleSwipe}
+        />
+      ) : null}
 
       <section className="native-card compact-card">
         <p className="card-label">Eligibility rule</p>
@@ -958,6 +1006,46 @@ function MatchPage() {
         </p>
       </section>
     </ScreenStack>
+  );
+}
+
+function MatchCard({ actor, candidate, disabled, onSwipe }) {
+  const isTeam = candidate.type === "team";
+  const title = isTeam ? candidate.team.name : candidate.profile.display_name;
+  const body = isTeam
+    ? candidate.team.project_idea || candidate.team.description || "Recruiting team looking for builders."
+    : candidate.profile.bio || "Solo participant looking for a team.";
+  const initial = title?.charAt(0) || "?";
+
+  return (
+    <section className="swipe-card" aria-label={`${title} match card`}>
+      <div className="swipe-card-top">
+        {candidate.profile?.avatar_url ? (
+          <img className="avatar-circle" src={candidate.profile.avatar_url} alt="" />
+        ) : (
+          <span className="avatar-circle">{initial}</span>
+        )}
+        <span className="status-pill">{isTeam ? "Recruiting team" : "Looking for team"}</span>
+      </div>
+      <p className="card-label">{actor.type === "team" ? `For ${actor.label}` : "For you"}</p>
+      <h2>{title}</h2>
+      <p>{body}</p>
+      <div className="chip-row">
+        {isTeam && candidate.team.events?.name ? <span>{candidate.team.events.name}</span> : null}
+        {isTeam && candidate.team.github_url ? <span>GitHub</span> : null}
+        {!isTeam && candidate.profile.desired_role ? <span>{candidate.profile.desired_role}</span> : null}
+        {!isTeam && candidate.profile.experience_level ? <span>{candidate.profile.experience_level}</span> : null}
+        {!isTeam && candidate.profile.availability ? <span>{candidate.profile.availability}</span> : null}
+      </div>
+      <div className="swipe-actions">
+        <button className="round-action reject" disabled={disabled} onClick={() => onSwipe("left")} type="button" aria-label="Skip profile">
+          No
+        </button>
+        <button className="round-action accept" disabled={disabled} onClick={() => onSwipe("right")} type="button" aria-label="Express interest">
+          Yes
+        </button>
+      </div>
+    </section>
   );
 }
 
@@ -1083,8 +1171,10 @@ function TeamsPage() {
 
 function TeamDetailPage() {
   const { teamId } = useParams();
+  const { user } = useAuth();
   const [team, setTeam] = useState(null);
   const [form, setForm] = useState({ name: "", description: "", project_idea: "", github_url: "", devpost_url: "", recruiting_members: false });
+  const [invite, setInvite] = useState(null);
   const [status, setStatus] = useState("loading");
   const [message, setMessage] = useState("");
 
@@ -1139,6 +1229,25 @@ function TeamDetailPage() {
     setStatus("idle");
   }
 
+  async function handleCreateInvite() {
+    setStatus("creating-invite");
+    setMessage("");
+
+    const { data, error } = await createTeamJoinToken(teamId, user.id);
+
+    if (error) {
+      setMessage(error.message);
+      setStatus("idle");
+      return;
+    }
+
+    setInvite({
+      url: `${window.location.origin}/join-team/${data.token}`,
+      expires_at: data.expires_at,
+    });
+    setStatus("idle");
+  }
+
   if (status === "loading") {
     return <LoadingCard label="Team" body="Loading team profile." />;
   }
@@ -1172,6 +1281,21 @@ function TeamDetailPage() {
             </span>
           ))}
         </div>
+      </section>
+      <section className="native-card event-section">
+        <p className="card-label">QR invite</p>
+        <h2>Invite by link or QR.</h2>
+        <p>Generate a one-week join link. Teammates scan or open it, then submit a request for approval.</p>
+        <button className="secondary-action" disabled={status === "creating-invite"} onClick={handleCreateInvite} type="button">
+          {status === "creating-invite" ? "Generating..." : "Generate join link"}
+        </button>
+        {invite ? (
+          <div className="qr-preview">
+            <img alt="Team join QR code" src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(invite.url)}`} />
+            <p className="fine-print">{invite.url}</p>
+            <p className="fine-print">Expires {formatFullDate(invite.expires_at)}</p>
+          </div>
+        ) : null}
       </section>
       <form className="native-card profile-form" onSubmit={handleSave}>
         <p className="card-label">Edit team</p>
@@ -1223,19 +1347,85 @@ function TeamChatPage() {
 
 function JoinTeamPage() {
   const { token } = useParams();
+  const { user } = useAuth();
+  const [team, setTeam] = useState(null);
+  const [note, setNote] = useState("");
+  const [status, setStatus] = useState("loading");
+  const [message, setMessage] = useState("");
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadInvite() {
+      setStatus("loading");
+      const { data, error } = await getTeamByJoinToken(token);
+
+      if (!isMounted) return;
+
+      if (error) {
+        setMessage(error.message);
+      } else if (!data?.team) {
+        setMessage("This join link is invalid or expired.");
+      } else {
+        setTeam(data.team);
+        setMessage("");
+      }
+
+      setStatus("idle");
+    }
+
+    loadInvite();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [token]);
+
+  async function handleJoinRequest() {
+    if (!team) return;
+
+    setStatus("saving");
+    setMessage("");
+    const { error } = await createJoinRequest({
+      teamId: team.id,
+      userId: user.id,
+      message: note,
+    });
+
+    if (error) {
+      setMessage(error.message);
+    } else {
+      setMessage("Join request sent. The team lead can approve you in a later team-management step.");
+    }
+
+    setStatus("idle");
+  }
+
+  if (status === "loading") {
+    return <LoadingCard label="QR join" body="Checking this team invite." />;
+  }
 
   return (
     <ScreenStack>
       <ScreenHeader
         eyebrow="QR join"
-        title="Request to join this team?"
-        body="Sign in, confirm the request, and wait for the team lead to approve access."
+        title={team ? `Join ${team.name}?` : "Invite unavailable"}
+        body={team ? "Confirm the request and wait for the team lead to approve access." : "Ask the team lead for a fresh QR invite."}
       />
       <section className="native-card action-card">
-        <p className="fine-print">Token preview: {token}</p>
-        <button className="primary-action" type="button">
-          Send join request
-        </button>
+        {team ? (
+          <>
+            <p className="card-label">{team.events?.name ?? "Team invite"}</p>
+            <h2>{team.project_idea || team.description || "Team details"}</h2>
+            <Field label="Message to team lead" htmlFor="joinMessage">
+              <textarea id="joinMessage" rows="3" value={note} onChange={(event) => setNote(event.target.value)} />
+            </Field>
+            <button className="primary-action" disabled={status === "saving"} onClick={handleJoinRequest} type="button">
+              {status === "saving" ? "Sending..." : "Send join request"}
+            </button>
+          </>
+        ) : null}
+        {message ? <p className={message.startsWith("Join request") ? "form-success" : "auth-error"}>{message}</p> : null}
       </section>
     </ScreenStack>
   );
@@ -1502,218 +1692,6 @@ function SettingsPage() {
         </button>
       </section>
     </ScreenStack>
-  );
-}
-
-function AdminLayout() {
-  return (
-    <div className="admin-shell">
-      <aside className="admin-sidebar">
-        <Link className="admin-brand" to="/admin">
-          Hackmate Admin
-        </Link>
-        <nav className="nav flex-column gap-2" aria-label="Admin navigation">
-          <NavLink className="btn btn-outline-light text-start" to="/admin/events">
-            Events
-          </NavLink>
-          <NavLink className="btn btn-outline-light text-start" to="/admin/events/new">
-            Create Event
-          </NavLink>
-          <NavLink className="btn btn-outline-light text-start" to="/admin/users">
-            Users
-          </NavLink>
-          <NavLink className="btn btn-outline-light text-start" to="/admin/sessions">
-            Sessions
-          </NavLink>
-          <NavLink className="btn btn-outline-light text-start" to="/admin/audit-logs">
-            Audit Logs
-          </NavLink>
-          <NavLink className="btn btn-light text-start" to="/">
-            Back to App
-          </NavLink>
-        </nav>
-      </aside>
-      <main className="admin-content">
-        <Outlet />
-      </main>
-    </div>
-  );
-}
-
-function AdminDashboardPage() {
-  return (
-    <section className="container-fluid py-4">
-      <p className="text-uppercase fw-semibold text-secondary mb-2">Admin portal</p>
-      <h1 className="display-6 fw-bold">Operations overview</h1>
-      <p className="lead text-secondary">
-        Event creation, participant lists, users, sessions, IP addresses, and
-        audit logs are managed here with Bootstrap screens.
-      </p>
-      <div className="row g-3 mt-2">
-        <AdminMetric label="Events" value="--" />
-        <AdminMetric label="Participants" value="--" />
-        <AdminMetric label="Sessions" value="--" />
-      </div>
-    </section>
-  );
-}
-
-function AdminEventsPage() {
-  return (
-    <section className="container-fluid py-4">
-      <div className="d-flex flex-column flex-md-row justify-content-between gap-3 align-items-md-center mb-4">
-        <div>
-          <p className="text-uppercase fw-semibold text-secondary mb-2">Events</p>
-          <h1 className="display-6 fw-bold mb-0">Manage hackathons</h1>
-        </div>
-        <Link className="btn btn-primary" to="/admin/events/new">
-          Create event
-        </Link>
-      </div>
-      <div className="table-responsive rounded shadow-sm">
-        <table className="table table-striped table-hover align-middle mb-0">
-          <thead>
-            <tr>
-              <th scope="col">Event</th>
-              <th scope="col">Status</th>
-              <th scope="col">Participants</th>
-              <th scope="col">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {sampleEvents.map((event) => (
-              <tr key={event.id}>
-                <td>{event.name}</td>
-                <td>{event.status}</td>
-                <td>--</td>
-                <td>
-                  <Link className="btn btn-sm btn-outline-primary" to={`/admin/events/${event.id}/participants`}>
-                    View participants
-                  </Link>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </section>
-  );
-}
-
-function AdminEventCreatePage() {
-  return (
-    <section className="container-fluid py-4">
-      <p className="text-uppercase fw-semibold text-secondary mb-2">Create event</p>
-      <h1 className="display-6 fw-bold">New hackathon</h1>
-      <form className="card shadow-sm mt-4">
-        <div className="card-body row g-3">
-          <div className="col-12 col-md-6">
-            <label className="form-label" htmlFor="eventName">Event name</label>
-            <input className="form-control" id="eventName" placeholder="Hackathon name" />
-          </div>
-          <div className="col-12 col-md-6">
-            <label className="form-label" htmlFor="eventCapacity">Capacity</label>
-            <input className="form-control" id="eventCapacity" placeholder="250" type="number" />
-          </div>
-          <div className="col-12 col-md-6">
-            <label className="form-label" htmlFor="eventStart">Starts at</label>
-            <input className="form-control" id="eventStart" type="datetime-local" />
-          </div>
-          <div className="col-12 col-md-6">
-            <label className="form-label" htmlFor="eventEnd">Ends at</label>
-            <input className="form-control" id="eventEnd" type="datetime-local" />
-          </div>
-          <div className="col-12">
-            <label className="form-label" htmlFor="eventDescription">Description</label>
-            <textarea className="form-control" id="eventDescription" rows="4" placeholder="Event summary, restrictions, hours, and logistics" />
-          </div>
-          <div className="col-12 d-flex justify-content-end">
-            <button className="btn btn-primary" type="button">Save draft</button>
-          </div>
-        </div>
-      </form>
-    </section>
-  );
-}
-
-function AdminParticipantsPage() {
-  const { eventId } = useParams();
-
-  return (
-    <section className="container-fluid py-4">
-      <div className="d-flex flex-column flex-md-row justify-content-between gap-3 align-items-md-center mb-4">
-        <div>
-          <p className="text-uppercase fw-semibold text-secondary mb-2">Participants</p>
-          <h1 className="display-6 fw-bold mb-0">{formatRouteLabel(eventId)}</h1>
-        </div>
-        <input className="form-control admin-search" placeholder="Search participants" />
-      </div>
-      <div className="table-responsive rounded shadow-sm">
-        <table className="table table-striped table-hover align-middle mb-0">
-          <thead>
-            <tr>
-              <th scope="col">Name</th>
-              <th scope="col">Team status</th>
-              <th scope="col">Registration</th>
-              <th scope="col">Check-in</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td>Placeholder participant</td>
-              <td>Looking for team</td>
-              <td>Registered</td>
-              <td>Pending</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </section>
-  );
-}
-
-function AdminMetric({ label, value }) {
-  return (
-    <div className="col-12 col-md-4">
-      <div className="card shadow-sm">
-        <div className="card-body">
-          <p className="text-secondary mb-1">{label}</p>
-          <strong className="fs-3">{value}</strong>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function AdminTablePage({ title }) {
-  return (
-    <section className="container-fluid py-4">
-      <div className="d-flex flex-column flex-md-row justify-content-between gap-3 align-items-md-center mb-4">
-        <div>
-          <p className="text-uppercase fw-semibold text-secondary mb-2">Admin</p>
-          <h1 className="display-6 fw-bold mb-0">{title}</h1>
-        </div>
-        <input className="form-control admin-search" placeholder={`Search ${title.toLowerCase()}`} />
-      </div>
-      <div className="table-responsive rounded shadow-sm">
-        <table className="table table-striped table-hover align-middle mb-0">
-          <thead>
-            <tr>
-              <th scope="col">Name</th>
-              <th scope="col">Status</th>
-              <th scope="col">Last Updated</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td>Placeholder row</td>
-              <td>Pending implementation</td>
-              <td>--</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </section>
   );
 }
 

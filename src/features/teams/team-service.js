@@ -77,3 +77,71 @@ export async function updateTeam(teamId, updates) {
 
   return { data, error };
 }
+
+export async function createTeamJoinToken(teamId, userId) {
+  if (!supabase) return { data: null, error: new Error("Supabase is not configured.") };
+
+  const token = crypto.randomUUID();
+  const tokenHash = await hashToken(token);
+  const expiresAt = new Date(Date.now() + 1000 * 60 * 60 * 24 * 7).toISOString();
+
+  const { data, error } = await supabase
+    .from("team_qr_tokens")
+    .insert({
+      team_id: teamId,
+      token_hash: tokenHash,
+      expires_at: expiresAt,
+      created_by: userId,
+    })
+    .select("id,team_id,expires_at")
+    .single();
+
+  if (error) return { data: null, error };
+
+  return { data: { ...data, token }, error: null };
+}
+
+export async function getTeamByJoinToken(token) {
+  if (!supabase) return { data: null, error: null };
+
+  const tokenHash = await hashToken(token);
+  const { data, error } = await supabase
+    .from("team_qr_tokens")
+    .select(`id,team_id,expires_at,teams(${teamColumns},events(id,name,starts_at,location_name))`)
+    .eq("token_hash", tokenHash)
+    .gt("expires_at", new Date().toISOString())
+    .maybeSingle();
+
+  if (error) return { data: null, error };
+  if (!data) return { data: null, error: null };
+
+  return { data: { token: data, team: data.teams }, error: null };
+}
+
+export async function createJoinRequest({ teamId, userId, message }) {
+  if (!supabase) return { data: null, error: new Error("Supabase is not configured.") };
+
+  const { data, error } = await supabase
+    .from("team_join_requests")
+    .upsert(
+      {
+        team_id: teamId,
+        user_id: userId,
+        status: "pending",
+        message: message?.trim() || null,
+      },
+      { onConflict: "team_id,user_id" },
+    )
+    .select("id,team_id,user_id,status,message")
+    .single();
+
+  return { data, error };
+}
+
+async function hashToken(token) {
+  const encoded = new TextEncoder().encode(token);
+  const digest = await crypto.subtle.digest("SHA-256", encoded);
+  return [...new Uint8Array(digest)]
+    .map((byte) => byte.toString(16).padStart(2, "0"))
+    .join("");
+}
