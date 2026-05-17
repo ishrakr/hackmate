@@ -65,7 +65,7 @@ import {
 const bottomTabs = [
   { to: "/", label: "Home", icon: "fa-solid fa-house" },
   { to: "/events", label: "Events", icon: "fa-solid fa-ticket" },
-  { to: "/match", label: "Match", icon: "fa-solid fa-heart" },
+  { to: "/match", label: "Match", icon: "fa-solid fa-user-group" },
   { to: "/chat/lobby", label: "Chat", icon: "fa-solid fa-comments" },
   { to: "/profile", label: "Me", icon: "fa-solid fa-user" },
 ];
@@ -240,36 +240,79 @@ function MobileAppLayout() {
 
 function HomePage() {
   const [liveEventCount, setLiveEventCount] = useState(null);
+  const [events, setEvents] = useState([]);
+  const [registrations, setRegistrations] = useState([]);
+  const { user } = useAuth();
 
   useEffect(() => {
     let isMounted = true;
 
-    countLiveEvents().then(({ count }) => {
-      if (isMounted) setLiveEventCount(count);
+    Promise.all([countLiveEvents(), listEvents(), listUserEventRegistrations(user.id)]).then(([countResult, eventsResult, registrationResult]) => {
+      if (!isMounted) return;
+      setLiveEventCount(countResult.count);
+      setEvents(eventsResult.data ?? []);
+      setRegistrations((registrationResult.data ?? []).filter((registration) => registration.status !== "Cancelled"));
     });
 
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [user.id]);
+
+  const now = Date.now();
+  const joinedEvents = events.filter((event) => registrations.some((registration) => registration.event_id === event.id));
+  const currentEvents = joinedEvents.filter((event) => new Date(event.starts_at).getTime() <= now && (!event.ends_at || new Date(event.ends_at).getTime() >= now));
+  const upcomingEvents = events.filter((event) => new Date(event.starts_at).getTime() > now).slice(0, 3);
 
   return (
     <ScreenStack>
       <section className="home-hero-card native-card">
         <p className="card-label">Hackmate</p>
-        <h1>Your hackathons.</h1>
-        <p>Join events, then match and chat with participants there.</p>
+        <h1>Build with the right people.</h1>
+        <p>Join an event, choose your team mode, then match with participants there.</p>
         <div className="home-action-row">
           <Link className="primary-action" to="/events">Choose event</Link>
           <Link className="secondary-action" to="/chat/lobby">Chat</Link>
         </div>
       </section>
 
+      {joinedEvents.length > 0 ? (
+        <section className="native-card compact-card home-event-stack">
+          <p className="card-label">Joined</p>
+          {(currentEvents.length ? currentEvents : joinedEvents).slice(0, 2).map((event) => (
+            <HomeEventRow key={event.id} event={event} />
+          ))}
+        </section>
+      ) : null}
+
+      {upcomingEvents.length > 0 ? (
+        <section className="native-card compact-card home-event-stack">
+          <p className="card-label">Upcoming</p>
+          {upcomingEvents.map((event) => (
+            <HomeEventRow key={event.id} event={event} />
+          ))}
+        </section>
+      ) : null}
+
       <section className="quick-grid" aria-label="Quick actions">
         <QuickAction to="/events" label="Events" value={liveEventCount === null ? "Loading" : `${liveEventCount} live`} />
         <QuickAction to="/match" label="Match" value="Team" />
       </section>
     </ScreenStack>
+  );
+}
+
+function HomeEventRow({ event }) {
+  const date = formatDateParts(event.starts_at);
+
+  return (
+    <Link className="home-event-row" to={`/events/${event.id}`}>
+      {event.logo_url ? <img src={event.logo_url} alt="" /> : <span>{event.name.charAt(0)}</span>}
+      <div>
+        <strong>{event.name}</strong>
+        <small>{date.monthDay} · {date.time} · {event.location_name || "Location TBA"}</small>
+      </div>
+    </Link>
   );
 }
 
@@ -615,6 +658,7 @@ function EventsPage() {
         data ?? { event_id: eventId, user_id: user.id, status: "Registered" },
         ...current.filter((registration) => registration.event_id !== eventId),
       ]);
+      window.location.assign("/onboarding");
     }
 
     setSavingEventId("");
@@ -652,7 +696,7 @@ function EventsPage() {
       <ScreenHeader
         eyebrow="Events"
         title="Choose your event."
-        body="Register for the hackathon you are joining. Matching unlocks after you pick an event."
+        body="Pick the hackathon you are joining. Team setup starts right after registration."
       />
 
       <input
@@ -661,15 +705,6 @@ function EventsPage() {
         value={search}
         onChange={(event) => setSearch(event.target.value)}
       />
-
-      {selectedEvent ? (
-        <section className="native-card event-selected-card">
-          <p className="card-label">You're in</p>
-          <h2>{selectedEvent.name}</h2>
-          <p>{formatFullDate(selectedEvent.starts_at)} at {selectedEvent.location_name || "Location TBA"}</p>
-          <Link className="primary-action" to="/match">Start matching</Link>
-        </section>
-      ) : null}
 
       {status === "loading" ? <LoadingCard label="Events" body="Loading upcoming hackathons." /> : null}
       {message ? <EmptyCard title="Events unavailable" body={message} /> : null}
@@ -700,10 +735,13 @@ function EventsPage() {
 function EventCard({ event, isRegistered, isSaving, onLeave, onRegister }) {
   const startsAt = formatDateParts(event.starts_at);
   const endsAt = event.ends_at ? formatDateParts(event.ends_at) : null;
+  const artwork = event.cover_url || event.banner_url;
 
   return (
     <article className={`event-showcase-card${isRegistered ? " is-selected" : ""}`}>
+      {artwork ? <img className="event-card-cover" src={artwork} alt="" /> : null}
       <Link className="event-showcase-main" to={`/events/${event.id}`}>
+        {event.logo_url ? <img className="event-logo" src={event.logo_url} alt="" /> : null}
         <span className="event-date">
           <strong>{startsAt.weekday}</strong>
           <span>{startsAt.monthDay}</span>

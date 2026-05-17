@@ -13,6 +13,8 @@ const eventColumns = `
   capacity,
   registration_status,
   banner_url,
+  logo_url,
+  cover_url,
   organizer_id,
   created_at,
   updated_at

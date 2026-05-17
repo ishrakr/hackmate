@@ -1,6 +1,6 @@
 import { supabase } from "../../lib/supabase/client.js";
 
-const eventColumns = "id,name,description,starts_at,ends_at,location_name,address,latitude,longitude,capacity,registration_status,banner_url,organizer_id";
+const eventColumns = "id,name,description,starts_at,ends_at,location_name,address,latitude,longitude,capacity,registration_status,banner_url,logo_url,cover_url,organizer_id";
 
 export async function listEvents() {
   if (!supabase) return { data: [], error: null };

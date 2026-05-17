@@ -575,7 +575,27 @@ export function AdminEventEditorPage() {
             />
           </div>
           <div className="col-12 col-md-6 col-xl-3">
-            <label className="form-label" htmlFor="eventBanner">Banner image URL</label>
+            <label className="form-label" htmlFor="eventLogo">Logo URL</label>
+            <input
+              className="form-control"
+              id="eventLogo"
+              onChange={(event) => setForm((current) => ({ ...current, logo_url: event.target.value }))}
+              placeholder="https://..."
+              value={form.logo_url}
+            />
+          </div>
+          <div className="col-12 col-md-6 col-xl-3">
+            <label className="form-label" htmlFor="eventCover">Cover photo URL</label>
+            <input
+              className="form-control"
+              id="eventCover"
+              onChange={(event) => setForm((current) => ({ ...current, cover_url: event.target.value }))}
+              placeholder="https://..."
+              value={form.cover_url}
+            />
+          </div>
+          <div className="col-12 col-md-6 col-xl-3">
+            <label className="form-label" htmlFor="eventBanner">Legacy banner URL</label>
             <input
               className="form-control"
               id="eventBanner"
@@ -1852,6 +1872,8 @@ function buildEventForm() {
     capacity: "",
     registration_status: "draft",
     banner_url: "",
+    logo_url: "",
+    cover_url: "",
   };
 }
 
@@ -1910,6 +1932,8 @@ function eventToForm(event) {
     capacity: event.capacity ?? "",
     registration_status: event.registration_status ?? "draft",
     banner_url: event.banner_url ?? "",
+    logo_url: event.logo_url ?? "",
+    cover_url: event.cover_url ?? "",
   };
 }
 
@@ -1968,6 +1992,8 @@ function formToEventPayload(form) {
     capacity: form.capacity === "" ? null : Number(form.capacity),
     registration_status: form.registration_status,
     banner_url: emptyToNull(form.banner_url),
+    logo_url: emptyToNull(form.logo_url),
+    cover_url: emptyToNull(form.cover_url),
   };
 }
 
