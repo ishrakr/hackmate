@@ -28,6 +28,15 @@ import {
   upsertProfile,
 } from "../features/profiles/profile-service.js";
 import {
+  AdminDashboardPage,
+  AdminEventEditorPage,
+  AdminEventsPage,
+  AdminLayout,
+  AdminParticipantsPage,
+  AdminTablePage,
+  RequireAdmin,
+} from "../features/admin/admin-portal.jsx";
+import {
   createJoinRequest,
   createTeam,
   createTeamJoinToken,
@@ -43,25 +52,6 @@ const bottomTabs = [
   { to: "/match", label: "Match", mark: "M" },
   { to: "/chat/lobby", label: "Chat", mark: "C" },
   { to: "/profile", label: "Me", mark: "P" },
-];
-
-const sampleEvents = [
-  {
-    id: "starter",
-    name: "Starter Hackathon",
-    date: "Sat, Jun 8",
-    time: "9:00 AM",
-    place: "Innovation Hall",
-    status: "Registration open",
-  },
-  {
-    id: "ai-build",
-    name: "AI Build Weekend",
-    date: "Fri, Jul 12",
-    time: "6:00 PM",
-    place: "Downtown Lab",
-    status: "Waitlist soon",
-  },
 ];
 
 const sampleMembers = ["Alex", "Mina", "Jordan"];
@@ -101,11 +91,12 @@ const adminRoute = {
   children: [
     { index: true, element: <AdminDashboardPage /> },
     { path: "events", element: <AdminEventsPage /> },
-    { path: "events/new", element: <AdminEventCreatePage /> },
+    { path: "events/new", element: <AdminEventEditorPage /> },
+    { path: "events/:eventId/edit", element: <AdminEventEditorPage /> },
     { path: "events/:eventId/participants", element: <AdminParticipantsPage /> },
-    { path: "users", element: <AdminTablePage title="Users" /> },
-    { path: "sessions", element: <AdminTablePage title="Sessions" /> },
-    { path: "audit-logs", element: <AdminTablePage title="Audit Logs" /> },
+    { path: "users", element: <AdminTablePage resource="users" title="Users" /> },
+    { path: "sessions", element: <AdminTablePage resource="sessions" title="Sessions" /> },
+    { path: "audit-logs", element: <AdminTablePage resource="audit-logs" title="Audit Logs" /> },
   ],
 };
 
@@ -385,54 +376,6 @@ function RequireAuth({ children }) {
   return children;
 }
 
-function RequireAdmin({ children }) {
-  const location = useLocation();
-  const {
-    isAuthenticated,
-    isLoading,
-    isSupabaseConfigured,
-    role,
-    roles,
-    user,
-  } = useAuth();
-
-  if (isLoading) {
-    return (
-      <AdminGatePage
-        eyebrow="Admin"
-        title="Checking admin access."
-        body="Hackmate is restoring your Supabase Auth session before opening the admin portal."
-      />
-    );
-  }
-
-  if (!isSupabaseConfigured) {
-    return (
-      <AdminGatePage
-        eyebrow="Setup"
-        title="Supabase is not configured."
-        body="Admin routes require VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY so Hackmate can validate sessions."
-      />
-    );
-  }
-
-  if (!isAuthenticated) {
-    return <Navigate replace state={{ from: location }} to="/login" />;
-  }
-
-  if (!roles.includes("admin")) {
-    return (
-      <AdminGatePage
-        eyebrow="Admin"
-        title="Admin access required."
-        body={`Signed in as ${user?.email ?? "this user"} with role ${role ?? "none"}. Add an admin role in Supabase metadata before using this portal.`}
-      />
-    );
-  }
-
-  return children;
-}
-
 function AuthStatusScreen({ eyebrow, title, body }) {
   return (
     <ScreenStack>
@@ -476,20 +419,6 @@ function SupabaseConfigNotice() {
   );
 }
 
-function AdminGatePage({ eyebrow, title, body }) {
-  return (
-    <div className="admin-shell">
-      <main className="container py-5">
-        <p className="text-uppercase fw-semibold text-secondary mb-2">{eyebrow}</p>
-        <h1 className="display-6 fw-bold">{title}</h1>
-        <p className="lead text-secondary">{body}</p>
-        <Link className="btn btn-primary" to="/login">
-          Open sign in
-        </Link>
-      </main>
-    </div>
-  );
-}
 
 function OnboardingPage() {
   const { user } = useAuth();
@@ -1726,218 +1655,6 @@ function SettingsPage() {
         </button>
       </section>
     </ScreenStack>
-  );
-}
-
-function AdminLayout() {
-  return (
-    <div className="admin-shell">
-      <aside className="admin-sidebar">
-        <Link className="admin-brand" to="/admin">
-          Hackmate Admin
-        </Link>
-        <nav className="nav flex-column gap-2" aria-label="Admin navigation">
-          <NavLink className="btn btn-outline-light text-start" to="/admin/events">
-            Events
-          </NavLink>
-          <NavLink className="btn btn-outline-light text-start" to="/admin/events/new">
-            Create Event
-          </NavLink>
-          <NavLink className="btn btn-outline-light text-start" to="/admin/users">
-            Users
-          </NavLink>
-          <NavLink className="btn btn-outline-light text-start" to="/admin/sessions">
-            Sessions
-          </NavLink>
-          <NavLink className="btn btn-outline-light text-start" to="/admin/audit-logs">
-            Audit Logs
-          </NavLink>
-          <NavLink className="btn btn-light text-start" to="/">
-            Back to App
-          </NavLink>
-        </nav>
-      </aside>
-      <main className="admin-content">
-        <Outlet />
-      </main>
-    </div>
-  );
-}
-
-function AdminDashboardPage() {
-  return (
-    <section className="container-fluid py-4">
-      <p className="text-uppercase fw-semibold text-secondary mb-2">Admin portal</p>
-      <h1 className="display-6 fw-bold">Operations overview</h1>
-      <p className="lead text-secondary">
-        Event creation, participant lists, users, sessions, IP addresses, and
-        audit logs are managed here with Bootstrap screens.
-      </p>
-      <div className="row g-3 mt-2">
-        <AdminMetric label="Events" value="--" />
-        <AdminMetric label="Participants" value="--" />
-        <AdminMetric label="Sessions" value="--" />
-      </div>
-    </section>
-  );
-}
-
-function AdminEventsPage() {
-  return (
-    <section className="container-fluid py-4">
-      <div className="d-flex flex-column flex-md-row justify-content-between gap-3 align-items-md-center mb-4">
-        <div>
-          <p className="text-uppercase fw-semibold text-secondary mb-2">Events</p>
-          <h1 className="display-6 fw-bold mb-0">Manage hackathons</h1>
-        </div>
-        <Link className="btn btn-primary" to="/admin/events/new">
-          Create event
-        </Link>
-      </div>
-      <div className="table-responsive rounded shadow-sm">
-        <table className="table table-striped table-hover align-middle mb-0">
-          <thead>
-            <tr>
-              <th scope="col">Event</th>
-              <th scope="col">Status</th>
-              <th scope="col">Participants</th>
-              <th scope="col">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {sampleEvents.map((event) => (
-              <tr key={event.id}>
-                <td>{event.name}</td>
-                <td>{event.status}</td>
-                <td>--</td>
-                <td>
-                  <Link className="btn btn-sm btn-outline-primary" to={`/admin/events/${event.id}/participants`}>
-                    View participants
-                  </Link>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </section>
-  );
-}
-
-function AdminEventCreatePage() {
-  return (
-    <section className="container-fluid py-4">
-      <p className="text-uppercase fw-semibold text-secondary mb-2">Create event</p>
-      <h1 className="display-6 fw-bold">New hackathon</h1>
-      <form className="card shadow-sm mt-4">
-        <div className="card-body row g-3">
-          <div className="col-12 col-md-6">
-            <label className="form-label" htmlFor="eventName">Event name</label>
-            <input className="form-control" id="eventName" placeholder="Hackathon name" />
-          </div>
-          <div className="col-12 col-md-6">
-            <label className="form-label" htmlFor="eventCapacity">Capacity</label>
-            <input className="form-control" id="eventCapacity" placeholder="250" type="number" />
-          </div>
-          <div className="col-12 col-md-6">
-            <label className="form-label" htmlFor="eventStart">Starts at</label>
-            <input className="form-control" id="eventStart" type="datetime-local" />
-          </div>
-          <div className="col-12 col-md-6">
-            <label className="form-label" htmlFor="eventEnd">Ends at</label>
-            <input className="form-control" id="eventEnd" type="datetime-local" />
-          </div>
-          <div className="col-12">
-            <label className="form-label" htmlFor="eventDescription">Description</label>
-            <textarea className="form-control" id="eventDescription" rows="4" placeholder="Event summary, restrictions, hours, and logistics" />
-          </div>
-          <div className="col-12 d-flex justify-content-end">
-            <button className="btn btn-primary" type="button">Save draft</button>
-          </div>
-        </div>
-      </form>
-    </section>
-  );
-}
-
-function AdminParticipantsPage() {
-  const { eventId } = useParams();
-
-  return (
-    <section className="container-fluid py-4">
-      <div className="d-flex flex-column flex-md-row justify-content-between gap-3 align-items-md-center mb-4">
-        <div>
-          <p className="text-uppercase fw-semibold text-secondary mb-2">Participants</p>
-          <h1 className="display-6 fw-bold mb-0">{formatRouteLabel(eventId)}</h1>
-        </div>
-        <input className="form-control admin-search" placeholder="Search participants" />
-      </div>
-      <div className="table-responsive rounded shadow-sm">
-        <table className="table table-striped table-hover align-middle mb-0">
-          <thead>
-            <tr>
-              <th scope="col">Name</th>
-              <th scope="col">Team status</th>
-              <th scope="col">Registration</th>
-              <th scope="col">Check-in</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td>Placeholder participant</td>
-              <td>Looking for team</td>
-              <td>Registered</td>
-              <td>Pending</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </section>
-  );
-}
-
-function AdminMetric({ label, value }) {
-  return (
-    <div className="col-12 col-md-4">
-      <div className="card shadow-sm">
-        <div className="card-body">
-          <p className="text-secondary mb-1">{label}</p>
-          <strong className="fs-3">{value}</strong>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function AdminTablePage({ title }) {
-  return (
-    <section className="container-fluid py-4">
-      <div className="d-flex flex-column flex-md-row justify-content-between gap-3 align-items-md-center mb-4">
-        <div>
-          <p className="text-uppercase fw-semibold text-secondary mb-2">Admin</p>
-          <h1 className="display-6 fw-bold mb-0">{title}</h1>
-        </div>
-        <input className="form-control admin-search" placeholder={`Search ${title.toLowerCase()}`} />
-      </div>
-      <div className="table-responsive rounded shadow-sm">
-        <table className="table table-striped table-hover align-middle mb-0">
-          <thead>
-            <tr>
-              <th scope="col">Name</th>
-              <th scope="col">Status</th>
-              <th scope="col">Last Updated</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td>Placeholder row</td>
-              <td>Pending implementation</td>
-              <td>--</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </section>
   );
 }
 

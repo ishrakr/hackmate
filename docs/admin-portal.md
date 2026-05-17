@@ -13,6 +13,7 @@ The admin portal is a dedicated Bootstrap-based interface for operational and se
 - Audit logging for key actions.
 - Event creation and editing.
 - Participant lists per event.
+- Dashboard metrics for events, registrations, sessions, and audit activity.
 
 ## Admin Routes
 
@@ -20,6 +21,7 @@ The admin portal is a dedicated Bootstrap-based interface for operational and se
 /admin
 /admin/events
 /admin/events/new
+/admin/events/:eventId/edit
 /admin/events/:eventId/participants
 /admin/users
 /admin/sessions

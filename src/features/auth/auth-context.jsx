@@ -3,6 +3,7 @@ import {
   isSupabaseConfigured,
   supabase,
 } from "../../lib/supabase/client.js";
+import { listCurrentUserRoles } from "../admin/admin-service.js";
 
 const AuthContext = createContext(null);
 
@@ -12,6 +13,8 @@ export function AuthProvider({ children }) {
     isSupabaseConfigured ? "loading" : "ready",
   );
   const [error, setError] = useState("");
+  const [resolvedRoles, setResolvedRoles] = useState([]);
+  const [rolesStatus, setRolesStatus] = useState("idle");
 
   useEffect(() => {
     if (!supabase) {
@@ -45,6 +48,39 @@ export function AuthProvider({ children }) {
       subscription.unsubscribe();
     };
   }, []);
+
+  useEffect(() => {
+    if (!supabase || !session?.user?.id) {
+      setResolvedRoles([]);
+      setRolesStatus("idle");
+      return undefined;
+    }
+
+    let isMounted = true;
+
+    async function loadRoles() {
+      setRolesStatus("loading");
+      const { data, error: rolesError } = await listCurrentUserRoles(session.user.id);
+
+      if (!isMounted) return;
+
+      if (rolesError) {
+        setError((current) => current || rolesError.message);
+        setResolvedRoles([]);
+        setRolesStatus("ready");
+        return;
+      }
+
+      setResolvedRoles([...new Set(data)]);
+      setRolesStatus("ready");
+    }
+
+    loadRoles();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [session?.user?.id]);
 
   async function signInWithProvider(provider, nextPath = "/onboarding") {
     if (!supabase) {
@@ -89,12 +125,13 @@ export function AuthProvider({ children }) {
     return { error: signOutError };
   }
 
-  const roles = getUserRoles(session?.user);
+  const roles = [...new Set([...getUserRoles(session?.user), ...resolvedRoles])];
   const value = {
     error,
     isAuthenticated: Boolean(session),
     isLoading: status === "loading",
     isSupabaseConfigured,
+    isResolvingRoles: rolesStatus === "loading",
     role: roles[0] ?? (session ? "participant" : null),
     roles,
     session,
