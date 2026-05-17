@@ -7,8 +7,6 @@ import { listCurrentUserRoles } from "../admin/admin-service.js";
 
 const oauthFlowStorageKey = "hackmate.oauth.flow";
 
-export const adminOAuthIntentKey = "hackmate.admin.oauth.intent";
-
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
@@ -184,36 +182,6 @@ export function peekOAuthFlow() {
   }
 }
 
-export function markAdminOAuthIntent(nextPath = "/admin") {
-  window.localStorage.setItem(
-    adminOAuthIntentKey,
-    JSON.stringify({ nextPath, startedAt: Date.now() }),
-  );
-}
-
-export function consumeAdminOAuthIntent() {
-  const raw = window.localStorage.getItem(adminOAuthIntentKey);
-  if (!raw) return null;
-
-  window.localStorage.removeItem(adminOAuthIntentKey);
-
-  try {
-    return JSON.parse(raw);
-  } catch {
-    return null;
-  }
-}
-
-export function peekAdminOAuthIntent() {
-  const raw = window.localStorage.getItem(adminOAuthIntentKey);
-  if (!raw) return null;
-
-  try {
-    return JSON.parse(raw);
-  } catch {
-    return null;
-  }
-}
 
 export function useAuth() {
   const context = useContext(AuthContext);

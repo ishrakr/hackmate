@@ -9,10 +9,7 @@ import {
   useParams,
 } from "react-router-dom";
 import {
-  consumeAdminOAuthIntent,
   consumeOAuthFlow,
-  markAdminOAuthIntent,
-  peekAdminOAuthIntent,
   peekOAuthFlow,
   useAuth,
 } from "../features/auth/auth-context.jsx";
@@ -67,6 +64,7 @@ const bottomTabs = [
 
 const sampleMembers = ["Alex", "Mina", "Jordan"];
 const isAdminContainer = import.meta.env.VITE_APP_MODE === "admin";
+const participantAdminRedirect = import.meta.env.VITE_ADMIN_BASE_URL || "/";
 
 const adminRouteChildren = [
   { index: true, element: <AdminDashboardPage /> },
@@ -117,22 +115,6 @@ const authRoute = {
   ],
 };
 
-const adminOAuthStartRoute = {
-  path: "/admin/login",
-  element: <AdminOAuthStartPage />,
-};
-
-const adminAuthCallbackRoute = {
-  path: "/admin/auth/callback",
-  element: <AdminAuthCallbackPage />,
-};
-
-const adminRoute = {
-  path: "/admin",
-  element: <RequireAdmin><AdminLayout /></RequireAdmin>,
-  children: adminRouteChildren,
-};
-
 const standaloneAdminRoute = {
   path: "/",
   element: <RequireAdmin><AdminLayout /></RequireAdmin>,
@@ -143,11 +125,13 @@ export const router = createBrowserRouter(
   isAdminContainer
     ? [
         { path: "/auth/callback", element: <AdminAuthCallbackPage /> },
-        { path: "/admin/auth/callback", element: <AdminAuthCallbackPage /> },
         standaloneAdminRoute,
-        adminRoute,
       ]
-    : [adminAuthCallbackRoute, adminOAuthStartRoute, authRoute, mobileAppRoute, adminRoute],
+    : [
+        { path: "/admin/*", element: <Navigate replace to={participantAdminRedirect} /> },
+        authRoute,
+        mobileAppRoute,
+      ],
 );
 
 function AuthLayout() {
@@ -220,16 +204,6 @@ function MobileAppLayout() {
       </div>
     </div>
   );
-}
-
-function AdminOAuthStartPage() {
-  const location = useLocation();
-  const params = new URLSearchParams(location.search);
-  const nextPath = getSafeNextPath(params.get("next"), "/admin");
-
-  markAdminOAuthIntent(nextPath);
-
-  return <Navigate replace to={`/admin${location.search}${location.hash}`} />;
 }
 
 function HomePage() {
@@ -376,23 +350,12 @@ function AuthCallbackPage() {
   const location = useLocation();
   const { error, isAuthenticated, isLoading, isSupabaseConfigured } = useAuth();
   const flow = peekOAuthFlow();
-  const adminIntent = peekAdminOAuthIntent();
   const nextPath = getSafeNextPath(new URLSearchParams(location.search).get("next"));
 
-  if (flow?.mode === "admin" || adminIntent) {
-    const params = new URLSearchParams(location.search);
-
-    if (!params.get("next")) {
-      params.set("next", flow?.nextPath || adminIntent?.nextPath || "/admin");
-    }
-
-    const query = params.toString();
-    const callbackPath = flow?.callbackPath || "/admin/auth/callback";
-    const redirectPath = callbackPath.startsWith("/admin")
-      ? `${callbackPath}${query ? `?${query}` : ""}${location.hash}`
-      : `/admin/auth/callback${query ? `?${query}` : ""}${location.hash}`;
-
-    return <Navigate replace to={redirectPath} />;
+  if (flow?.mode === "admin") {
+    consumeOAuthFlow();
+    window.location.replace(import.meta.env.VITE_ADMIN_BASE_URL || "/");
+    return null;
   }
 
   if (!isSupabaseConfigured) {

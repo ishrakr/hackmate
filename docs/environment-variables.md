@@ -11,7 +11,6 @@ VITE_SUPABASE_URL=
 VITE_SUPABASE_ANON_KEY=
 VITE_APP_MODE=
 VITE_ADMIN_BASE_URL=
-VITE_PARTICIPANT_BASE_URL=
 SUPABASE_SERVICE_ROLE_KEY=
 GITHUB_CLIENT_ID=
 GITHUB_CLIENT_SECRET=
@@ -26,8 +25,7 @@ QR_TOKEN_SECRET=
 - `VITE_SUPABASE_URL`: Public Supabase project URL used by the frontend.
 - `VITE_SUPABASE_ANON_KEY`: Public Supabase anon key used by the frontend with RLS.
 - `VITE_APP_MODE`: Optional frontend mode. Set to `admin` for the separate admin container so `/` serves the admin portal.
-- `VITE_ADMIN_BASE_URL`: Public admin portal origin used for admin OAuth redirects, for example `https://admin.example.com`.
-- `VITE_PARTICIPANT_BASE_URL`: Public participant app origin used by the admin portal recovery link, for example `https://app.example.com`.
+- `VITE_ADMIN_BASE_URL`: Public admin portal origin used by the participant container to redirect `/admin/*` traffic to the separate admin service.
 - `SUPABASE_SERVICE_ROLE_KEY`: Private key for trusted backend operations only.
 - `GITHUB_CLIENT_ID`: GitHub OAuth app client ID.
 - `GITHUB_CLIENT_SECRET`: GitHub OAuth app client secret.
@@ -42,11 +40,10 @@ Configure these redirect URLs in Supabase Auth for local development:
 
 ```txt
 http://localhost:5173/auth/callback
-http://localhost:5173/admin/auth/callback
 http://localhost:5174/auth/callback
 ```
 
-Production deployments should add the deployed participant `/auth/callback`, embedded admin `/admin/auth/callback`, and standalone admin `/auth/callback` URLs. Set `VITE_ADMIN_BASE_URL` on any participant-app deployment that exposes `/admin` so embedded admin login can redirect to the standalone admin domain.
+Production deployments should add the deployed participant `/auth/callback` and standalone admin `/auth/callback` URLs. The participant and admin apps are separate containers; do not route admin login through the participant container.
 
 ## GitHub Signup
 

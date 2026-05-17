@@ -9,9 +9,7 @@ import {
   useParams,
 } from "react-router-dom";
 import {
-  consumeAdminOAuthIntent,
   consumeOAuthFlow,
-  markAdminOAuthIntent,
   useAuth,
 } from "../auth/auth-context.jsx";
 import {
@@ -897,7 +895,6 @@ function AdminSignInPage({ nextPath }) {
 
   async function handleSignIn(provider) {
     setPendingProvider(provider);
-    markAdminOAuthIntent(adminNextPath);
     const { error: signInError } = await signInWithProvider(
       provider,
       adminNextPath,
@@ -926,12 +923,6 @@ function AdminSignInPage({ nextPath }) {
                   This is the standalone Bootstrap operations console for events,
                   participants, sessions, users, and audit logs.
                 </p>
-                {isStandaloneAdmin ? (
-                  <div className="alert alert-light border mb-4">
-                    If GitHub returns you to the participant app, open this recovery link after login:{" "}
-                    <a href={buildParticipantAdminRecoveryUrl(adminNextPath)}>admin recovery</a>.
-                  </div>
-                ) : null}
                 <div className="d-grid gap-2">
                   <button
                     className="btn btn-primary btn-lg"
@@ -971,7 +962,6 @@ export function AdminAuthCallbackPage() {
 
   if (!isLoading && isAuthenticated) {
     consumeOAuthFlow();
-    consumeAdminOAuthIntent();
     return <Navigate replace to={nextPath} />;
   }
 
@@ -1001,14 +991,6 @@ function AdminNavLink({ children, end = false, to }) {
 function adminPath(path = "") {
   if (!path || path === "/") return adminBasePath || "/";
   return `${adminBasePath}${path}`;
-}
-
-function buildParticipantAdminRecoveryUrl(nextPath) {
-  const fallbackOrigin = import.meta.env.VITE_PARTICIPANT_BASE_URL;
-  const participantOrigin = fallbackOrigin || window.location.origin;
-  const url = new URL("/admin/login", participantOrigin);
-  url.searchParams.set("next", nextPath || "/admin");
-  return url.toString();
 }
 
 function getSafeAdminPath(value) {
