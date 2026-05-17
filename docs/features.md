@@ -124,7 +124,23 @@ Event detail pages include:
 - Food
 - Announcements
 - Attendance check-in
+- AR scavenger hunt
 - Feedback
+
+## AR Scavenger Hunt
+
+The AR scavenger hunt lets participants join from Safari or Chrome in the existing web app and search the event room for hidden virtual objects.
+
+- The participant route is `/events/:eventId/scavenger-hunt`.
+- Three.js renders collectible objects, progress feedback, clues, and local preview mode.
+- 8th Wall is used for live browser-based AR tracking through the distributed engine binary at `public/8thwall/xr.js`.
+- Objects are placed around common room hiding spots such as under tables, under chairs, behind wall corners, behind signage, high shelves, and floor corners.
+- Participant progress is stored locally per event so players can leave and return during the event.
+- Without the local 8th Wall engine binary or mobile camera context, the screen still runs as a Three.js preview for development and QA.
+
+### 8th Wall Engine Setup
+
+Download the distributed 8th Wall engine binary and place `xr.js` and its required chunk files under `public/8thwall/`. The scavenger hunt preloads the `slam` chunk for room-scale world tracking.
 
 ## OpenStreetMap
 

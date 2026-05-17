@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import {
   createBrowserRouter,
   Link,
@@ -50,6 +50,12 @@ import {
   updateTeam,
 } from "../features/teams/team-service.js";
 
+const ScavengerHuntPage = lazy(() =>
+  import("../features/ar/ScavengerHuntPage.jsx").then((module) => ({
+    default: module.ScavengerHuntPage,
+  })),
+);
+
 const bottomTabs = [
   { to: "/", label: "Home", mark: "H" },
   { to: "/events", label: "Events", mark: "E" },
@@ -87,6 +93,16 @@ const mobileAppRoute = {
     { path: "events/:eventId/map", element: <RequireAuth><EventSubPage title="Map and Parking" /></RequireAuth> },
     { path: "events/:eventId/schedule", element: <RequireAuth><EventSubPage title="Schedule" /></RequireAuth> },
     { path: "events/:eventId/faq", element: <RequireAuth><EventSubPage title="FAQ" /></RequireAuth> },
+    {
+      path: "events/:eventId/scavenger-hunt",
+      element: (
+        <RequireAuth>
+          <Suspense fallback={<LoadingCard label="AR hunt" body="Loading scavenger hunt." />}>
+            <ScavengerHuntPage />
+          </Suspense>
+        </RequireAuth>
+      ),
+    },
     { path: "events/:eventId/feedback", element: <RequireAuth><EventSubPage title="Feedback" /></RequireAuth> },
     { path: "match", element: <RequireAuth><MatchPage /></RequireAuth> },
     { path: "teams", element: <RequireAuth><TeamsPage /></RequireAuth> },
@@ -674,6 +690,7 @@ function EventDetailPage() {
         <MenuRow to="map" title="Map and parking" detail="Venue, parking, entrances" />
         <MenuRow to="schedule" title="Schedule" detail="Talks, food, judging" />
         <MenuRow to="faq" title="FAQ" detail="Rules, hours, restrictions" />
+        <MenuRow to="scavenger-hunt" title="AR hunt" detail="Find hidden room objects" />
         <MenuRow to={`/chat/bot?event=${event.id}`} title="Ask bot" detail="FAQ, schedule, location" />
         <MenuRow to="feedback" title="Feedback" detail="Post-event survey" />
       </div>

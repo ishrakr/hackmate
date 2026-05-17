@@ -886,6 +886,188 @@ h2 {
   border-radius: 999px;
 }
 
+.ar-hunt-shell {
+  display: grid;
+  gap: 1rem;
+}
+
+.ar-stage {
+  position: relative;
+  min-height: min(68vh, 40rem);
+  overflow: hidden;
+  color: #fff;
+  background:
+    linear-gradient(180deg, rgba(17, 24, 39, 0.12), rgba(17, 24, 39, 0.84)),
+    radial-gradient(circle at 50% 30%, rgba(112, 193, 179, 0.22), transparent 14rem),
+    #111827;
+  border-radius: 1.35rem;
+  box-shadow: 0 22px 48px rgba(18, 24, 38, 0.22);
+}
+
+.ar-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  touch-action: manipulation;
+}
+
+.ar-topbar,
+.ar-bottom-panel {
+  position: absolute;
+  right: 0.9rem;
+  left: 0.9rem;
+  z-index: 2;
+}
+
+.ar-topbar {
+  top: 0.9rem;
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.ar-back,
+.ar-score {
+  display: inline-flex;
+  min-height: 2.45rem;
+  align-items: center;
+  padding: 0.45rem 0.75rem;
+  color: #fff;
+  font-weight: 850;
+  text-decoration: none;
+  background: rgba(17, 24, 39, 0.62);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 999px;
+  backdrop-filter: blur(14px);
+}
+
+.ar-reticle {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  z-index: 1;
+  width: 4.25rem;
+  height: 4.25rem;
+  pointer-events: none;
+  border: 2px solid rgba(255, 255, 255, 0.64);
+  border-radius: 999px;
+  transform: translate(-50%, -50%);
+}
+
+.ar-reticle::after {
+  position: absolute;
+  inset: 50% auto auto 50%;
+  width: 0.45rem;
+  height: 0.45rem;
+  content: "";
+  background: #fff;
+  border-radius: 999px;
+  transform: translate(-50%, -50%);
+}
+
+.ar-bottom-panel {
+  bottom: 0.9rem;
+  display: grid;
+  gap: 0.7rem;
+  padding: 0.95rem;
+  background: rgba(17, 24, 39, 0.72);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 1.1rem;
+  backdrop-filter: blur(18px);
+}
+
+.ar-bottom-panel h1 {
+  max-width: none;
+  margin: 0;
+  font-size: 1.35rem;
+  line-height: 1.1;
+  letter-spacing: 0;
+}
+
+.ar-bottom-panel p {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.76);
+  line-height: 1.45;
+}
+
+.ar-progress-bar {
+  height: 0.55rem;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.18);
+  border-radius: 999px;
+}
+
+.ar-progress-bar span {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, #70c1b3, #ffd166);
+  border-radius: inherit;
+  transition: width 180ms ease;
+}
+
+.ar-clue-card {
+  display: grid;
+  gap: 0.2rem;
+  padding: 0.75rem;
+  color: var(--color-ink);
+  background: rgba(255, 255, 255, 0.94);
+  border-radius: 0.8rem;
+}
+
+.ar-clue-card span {
+  color: var(--color-muted);
+  font-size: 0.86rem;
+}
+
+.ar-clue-card.is-complete {
+  background: #ddf8f1;
+}
+
+.ar-found-toast {
+  color: #fff !important;
+  font-weight: 850;
+}
+
+.ar-inventory {
+  display: grid;
+  gap: 0.9rem;
+}
+
+.ar-object-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.65rem;
+}
+
+.ar-object-card {
+  display: grid;
+  gap: 0.3rem;
+  min-height: 6rem;
+  padding: 0.75rem;
+  background: #f8fafc;
+  border: 1px dashed var(--color-border);
+  border-radius: 0.9rem;
+}
+
+.ar-object-card strong {
+  color: var(--color-ink);
+  line-height: 1.2;
+}
+
+.ar-object-card span {
+  color: var(--color-muted);
+  font-size: 0.82rem;
+  line-height: 1.35;
+}
+
+.ar-object-card.is-found {
+  background: #eefdf8;
+  border-style: solid;
+  border-color: rgba(16, 168, 143, 0.28);
+}
+
 .bottom-tabs {
   position: fixed;
   right: 0;
