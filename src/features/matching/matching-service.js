@@ -2,7 +2,7 @@ import { supabase } from "../../lib/supabase/client.js";
 import { getProfile } from "../profiles/profile-service.js";
 import { listUserTeams } from "../teams/team-service.js";
 
-const profileColumns = "id,user_id,display_name,avatar_url,bio,desired_role,experience_level,looking_for_team,open_to_joining_team,availability,github_url,linkedin_url,devpost_url,current_team_id";
+const profileColumns = "id,user_id,display_name,avatar_url,bio,looking_for_team,open_to_joining_team,github_url,linkedin_url,devpost_url,current_team_id";
 const teamColumns = "id,event_id,name,description,project_idea,github_url,devpost_url,recruiting_members,created_by,events(id,name,starts_at)";
 
 export async function getMatchingContext(userId, eventId = null) {

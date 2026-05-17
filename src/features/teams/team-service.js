@@ -56,13 +56,44 @@ export async function createTeam({ team, userId, role }) {
 export async function getTeam(teamId) {
   if (!supabase) return { data: null, error: null };
 
-  const { data, error } = await supabase
+  const { data: team, error } = await supabase
     .from("teams")
-    .select(`${teamColumns},events(id,name,starts_at,location_name),team_members(id,user_id,role,status,profiles(display_name,avatar_url,desired_role))`)
+    .select(`${teamColumns},events(id,name,starts_at,location_name)`)
     .eq("id", teamId)
     .maybeSingle();
 
-  return { data, error };
+  if (error || !team) return { data: team, error };
+
+  const { data: members, error: memberError } = await supabase
+    .from("team_members")
+    .select("id,user_id,role,status")
+    .eq("team_id", teamId)
+    .order("created_at", { ascending: true });
+
+  if (memberError) return { data: null, error: memberError };
+
+  const userIds = [...new Set((members ?? []).map((member) => member.user_id))];
+  const { data: profiles, error: profileError } = userIds.length
+    ? await supabase
+        .from("profiles")
+        .select("user_id,display_name,avatar_url")
+        .in("user_id", userIds)
+    : { data: [], error: null };
+
+  if (profileError) return { data: null, error: profileError };
+
+  const profileMap = new Map((profiles ?? []).map((profile) => [profile.user_id, profile]));
+
+  return {
+    data: {
+      ...team,
+      team_members: (members ?? []).map((member) => ({
+        ...member,
+        profiles: profileMap.get(member.user_id) ?? null,
+      })),
+    },
+    error: null,
+  };
 }
 
 export async function updateTeam(teamId, updates) {

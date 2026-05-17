@@ -1357,8 +1357,7 @@ function MatchCard({ actor, candidate, disabled, onOpen, onSwipe }) {
         <div className="chip-row">
           {isTeam && candidate.team.events?.name ? <span>{candidate.team.events.name}</span> : null}
           {isTeam && candidate.team.github_url ? <span>GitHub</span> : null}
-          {!isTeam && candidate.profile.experience_level ? <span>{candidate.profile.experience_level}</span> : null}
-          {!isTeam && candidate.profile.availability ? <span>{candidate.profile.availability}</span> : null}
+          {!isTeam && candidate.profile.github_url ? <span>GitHub</span> : null}
         </div>
       </div>
       <div className="swipe-actions" aria-label="Swipe actions">
@@ -1898,7 +1897,7 @@ function ProfilePage() {
           <div>
             <p className="card-label">Profile</p>
             <h1>{displayName}</h1>
-            <p>{form.experience_level || "Experience TBA"} · {form.availability || "Availability TBA"}</p>
+            <p>{form.featured_skills?.length ? `${form.featured_skills.length} featured skills` : "Add featured skills"}</p>
           </div>
         </div>
         <p>{form.bio || "Add a short intro so teams know what you want to build."}</p>
@@ -1924,29 +1923,6 @@ function ProfilePage() {
             rows="4"
             value={form.bio}
             onChange={(event) => updateField("bio", event.target.value)}
-          />
-        </Field>
-        <div className="form-grid">
-          <Field label="Experience" htmlFor="experienceLevel">
-            <select
-              id="experienceLevel"
-              value={form.experience_level}
-              onChange={(event) => updateField("experience_level", event.target.value)}
-            >
-              <option value="">Choose level</option>
-              <option>Beginner</option>
-              <option>Intermediate</option>
-              <option>Advanced</option>
-              <option>Expert</option>
-            </select>
-          </Field>
-        </div>
-        <Field label="Availability" htmlFor="availability">
-          <input
-            id="availability"
-            placeholder="All weekend, evenings only..."
-            value={form.availability}
-            onChange={(event) => updateField("availability", event.target.value)}
           />
         </Field>
         <FeaturedSkillsEditor skills={form.featured_skills} onChange={(skills) => updateField("featured_skills", skills)} />
@@ -2278,10 +2254,8 @@ function profileToForm(profile) {
     linkedin_url: profile?.linkedin_url ?? "",
     github_url: profile?.github_url ?? "",
     devpost_url: profile?.devpost_url ?? "",
-    experience_level: profile?.experience_level ?? "",
     looking_for_team: Boolean(profile?.looking_for_team),
     open_to_joining_team: Boolean(profile?.open_to_joining_team),
-    availability: profile?.availability ?? "",
     featured_skills: Array.isArray(profile?.contact_preferences?.featured_skills)
       ? profile.contact_preferences.featured_skills.slice(0, 5)
       : [],
@@ -2297,10 +2271,8 @@ function formToProfile(form, user) {
     linkedin_url: emptyToNull(form.linkedin_url),
     github_url: emptyToNull(form.github_url),
     devpost_url: emptyToNull(form.devpost_url),
-    experience_level: emptyToNull(form.experience_level),
     looking_for_team: form.looking_for_team,
     open_to_joining_team: form.open_to_joining_team,
-    availability: emptyToNull(form.availability),
     contact_preferences: {
       featured_skills: (form.featured_skills ?? [])
         .filter((skill) => skill.name?.trim())
