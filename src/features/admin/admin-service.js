@@ -413,6 +413,34 @@ export async function listEventParticipants({
   };
 }
 
+export async function resetUserSwipesForEvent(eventId, userId) {
+  if (!supabase || !eventId || !userId) return { error: null };
+
+  const { data: teams, error: teamError } = await supabase
+    .from("teams")
+    .select("id")
+    .eq("event_id", eventId)
+    .eq("created_by", userId);
+
+  if (teamError) return { error: teamError };
+
+  const teamIds = teams?.map((team) => team.id) ?? [];
+
+  let deleteQuery = supabase
+    .from("swipes")
+    .delete()
+    .eq("event_id", eventId);
+
+  if (teamIds.length > 0) {
+    deleteQuery = deleteQuery.or(`actor_user_id.eq.${userId},target_user_id.eq.${userId},actor_team_id.in.(${teamIds.join(",")}),target_team_id.in.(${teamIds.join(",")})`);
+  } else {
+    deleteQuery = deleteQuery.or(`actor_user_id.eq.${userId},target_user_id.eq.${userId}`);
+  }
+
+  const { error } = await deleteQuery;
+  return { error };
+}
+
 export async function listAdminUsers({
   page = 1,
   pageSize = 10,

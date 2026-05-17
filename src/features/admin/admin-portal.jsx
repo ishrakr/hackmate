@@ -28,6 +28,7 @@ import {
   listAdminSessions,
   listAdminUsers,
   listEventParticipants,
+  resetUserSwipesForEvent,
   saveAdminAnnouncement,
   saveAdminEvent,
   saveAdminFaq,
@@ -664,6 +665,7 @@ export function AdminParticipantsPage() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [status, setStatus] = useState("loading");
   const [message, setMessage] = useState("");
+  const [resettingUserId, setResettingUserId] = useState("");
   const pageSize = 10;
 
   useEffect(() => {
@@ -712,6 +714,14 @@ export function AdminParticipantsPage() {
       isMounted = false;
     };
   }, [eventId, page, search, statusFilter]);
+
+  async function handleResetSwipes(userId) {
+    setResettingUserId(userId);
+    setMessage("");
+    const { error } = await resetUserSwipesForEvent(eventId, userId);
+    setMessage(error ? error.message : "Team match swipes reset for this participant.");
+    setResettingUserId("");
+  }
 
   return (
     <section className="container-fluid py-4 py-lg-5">
@@ -764,6 +774,7 @@ export function AdminParticipantsPage() {
                 <th scope="col">Check-in</th>
                 <th scope="col">Team</th>
                 <th scope="col">Last activity</th>
+                <th scope="col">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -779,11 +790,21 @@ export function AdminParticipantsPage() {
                     {participant.team_name ? participant.team_name : participant.looking_for_team ? "Looking for team" : "Solo"}
                   </td>
                   <td>{formatFullDate(participant.last_activity_at)}</td>
+                  <td>
+                    <button
+                      className="btn btn-sm btn-outline-danger"
+                      disabled={resettingUserId === participant.user_id}
+                      onClick={() => handleResetSwipes(participant.user_id)}
+                      type="button"
+                    >
+                      {resettingUserId === participant.user_id ? "Resetting..." : "Reset swipes"}
+                    </button>
+                  </td>
                 </tr>
               ))}
               {!participants.length && status !== "loading" ? (
                 <tr>
-                  <td className="text-center text-secondary py-4" colSpan="5">
+                  <td className="text-center text-secondary py-4" colSpan="6">
                     No participants matched this filter.
                   </td>
                 </tr>

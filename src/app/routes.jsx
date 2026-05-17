@@ -23,6 +23,7 @@ import {
   getEventMapMarkers,
   getEventRoomAreas,
   getEventSchedule,
+  leaveEvent,
   listUserEventRegistrations,
   listEvents,
   registerForEvent,
@@ -588,7 +589,7 @@ function EventsPage() {
       setMessage(error.message);
     } else {
       setRegistrations((current) => [
-        data,
+        data ?? { event_id: eventId, user_id: user.id, status: "Registered" },
         ...current.filter((registration) => registration.event_id !== eventId),
       ]);
     }
@@ -596,7 +597,26 @@ function EventsPage() {
     setSavingEventId("");
   }
 
-  const registeredEventIds = new Set(registrations.map((registration) => registration.event_id));
+  async function handleLeave(eventId) {
+    setSavingEventId(eventId);
+    setMessage("");
+
+    const { data, error } = await leaveEvent(eventId, user.id);
+
+    if (error) {
+      setMessage(error.message);
+    } else {
+      setRegistrations((current) => [
+        data ?? { event_id: eventId, user_id: user.id, status: "Cancelled" },
+        ...current.filter((registration) => registration.event_id !== eventId),
+      ]);
+    }
+
+    setSavingEventId("");
+  }
+
+  const activeRegistrations = registrations.filter((registration) => registration.status !== "Cancelled");
+  const registeredEventIds = new Set(activeRegistrations.map((registration) => registration.event_id));
   const selectedEvent = events.find((event) => registeredEventIds.has(event.id));
 
   return (
@@ -632,6 +652,7 @@ function EventsPage() {
               event={event}
               isRegistered={registeredEventIds.has(event.id)}
               isSaving={savingEventId === event.id}
+              onLeave={handleLeave}
               onRegister={handleRegister}
             />
           ))}
@@ -641,7 +662,7 @@ function EventsPage() {
   );
 }
 
-function EventCard({ event, isRegistered, isSaving, onRegister }) {
+function EventCard({ event, isRegistered, isSaving, onLeave, onRegister }) {
   const startsAt = formatDateParts(event.starts_at);
 
   return (
@@ -659,11 +680,11 @@ function EventCard({ event, isRegistered, isSaving, onRegister }) {
       </Link>
       <button
         className={isRegistered ? "secondary-action" : "primary-action"}
-        disabled={isRegistered || isSaving || event.registration_status === "closed"}
-        onClick={() => onRegister(event.id)}
+        disabled={isSaving || (!isRegistered && event.registration_status === "closed")}
+        onClick={() => isRegistered ? onLeave(event.id) : onRegister(event.id)}
         type="button"
       >
-        {isRegistered ? "Selected" : isSaving ? "Joining..." : "Join event"}
+        {isRegistered ? (isSaving ? "Leaving..." : "Leave event") : isSaving ? "Joining..." : "Join event"}
       </button>
     </article>
   );
@@ -1018,6 +1039,7 @@ function MatchPage() {
   const [actorIndex, setActorIndex] = useState(0);
   const [candidates, setCandidates] = useState([]);
   const [candidateIndex, setCandidateIndex] = useState(0);
+  const [activeCandidate, setActiveCandidate] = useState(null);
   const [selectedEventId, setSelectedEventId] = useState(null);
   const [status, setStatus] = useState("loading");
   const [message, setMessage] = useState("");
@@ -1100,7 +1122,12 @@ function MatchPage() {
     }
 
     setCandidateIndex((current) => current + 1);
+    setActiveCandidate(null);
     setStatus("idle");
+  }
+
+  function handleOpenCandidate(candidateToOpen) {
+    setActiveCandidate(candidateToOpen);
   }
 
   return (
@@ -1147,8 +1174,12 @@ function MatchPage() {
           actor={actor}
           candidate={candidate}
           disabled={status === "saving"}
+          onOpen={handleOpenCandidate}
           onSwipe={handleSwipe}
         />
+      ) : null}
+      {activeCandidate ? (
+        <CandidateDetailSheet candidate={activeCandidate} onClose={() => setActiveCandidate(null)} />
       ) : null}
 
       {!selectedEventId ? (
@@ -1158,7 +1189,8 @@ function MatchPage() {
   );
 }
 
-function MatchCard({ actor, candidate, disabled, onSwipe }) {
+function MatchCard({ actor, candidate, disabled, onOpen, onSwipe }) {
+  const [dragStart, setDragStart] = useState(null);
   const isTeam = candidate.type === "team";
   const title = isTeam ? candidate.team.name : candidate.profile.display_name;
   const body = isTeam
@@ -1166,8 +1198,30 @@ function MatchCard({ actor, candidate, disabled, onSwipe }) {
     : candidate.profile.bio || "Solo participant looking for a team.";
   const initial = title?.charAt(0) || "?";
 
+  function handlePointerDown(event) {
+    setDragStart({ x: event.clientX, y: event.clientY });
+  }
+
+  function handlePointerUp(event) {
+    if (!dragStart || disabled) return;
+
+    const deltaX = event.clientX - dragStart.x;
+    const deltaY = event.clientY - dragStart.y;
+    setDragStart(null);
+
+    if (Math.abs(deltaX) > 70 && Math.abs(deltaX) > Math.abs(deltaY) * 1.25) {
+      onSwipe(deltaX > 0 ? "right" : "left");
+    }
+  }
+
   return (
-    <section className="swipe-card tinder-card" aria-label={`${title} match card`}>
+    <section
+      className="swipe-card tinder-card"
+      aria-label={`${title} match card`}
+      onClick={() => onOpen(candidate)}
+      onPointerDown={handlePointerDown}
+      onPointerUp={handlePointerUp}
+    >
       <div className="swipe-card-top">
         {candidate.profile?.avatar_url ? (
           <img className="avatar-circle" src={candidate.profile.avatar_url} alt="" />
@@ -1189,12 +1243,45 @@ function MatchCard({ actor, candidate, disabled, onSwipe }) {
         </div>
       </div>
       <div className="swipe-actions" aria-label="Swipe actions">
-        <button className="round-action reject" disabled={disabled} onClick={() => onSwipe("left")} type="button" aria-label="Skip profile">
+        <button className="round-action reject" disabled={disabled} onClick={(event) => { event.stopPropagation(); onSwipe("left"); }} type="button" aria-label="Skip profile">
           ×
         </button>
-        <button className="round-action accept" disabled={disabled} onClick={() => onSwipe("right")} type="button" aria-label="Express interest">
+        <button className="round-action accept" disabled={disabled} onClick={(event) => { event.stopPropagation(); onSwipe("right"); }} type="button" aria-label="Express interest">
           ♥
         </button>
+      </div>
+    </section>
+  );
+}
+
+function CandidateDetailSheet({ candidate, onClose }) {
+  const isTeam = candidate.type === "team";
+  const title = isTeam ? candidate.team.name : candidate.profile.display_name;
+  const links = isTeam
+    ? [
+        ["GitHub", candidate.team.github_url],
+        ["Devpost", candidate.team.devpost_url],
+      ]
+    : [
+        ["GitHub", candidate.profile.github_url],
+        ["LinkedIn", candidate.profile.linkedin_url],
+        ["Devpost", candidate.profile.devpost_url],
+      ];
+
+  return (
+    <section className="native-card candidate-detail-sheet">
+      <div className="sheet-header-row">
+        <div>
+          <p className="card-label">Profile</p>
+          <h2>{title}</h2>
+        </div>
+        <button className="secondary-action" onClick={onClose} type="button">Close</button>
+      </div>
+      <p>{isTeam ? candidate.team.description || candidate.team.project_idea : candidate.profile.bio || "No bio yet."}</p>
+      <div className="profile-link-grid">
+        {links.filter(([, href]) => href).map(([label, href]) => (
+          <a className="secondary-action" href={href} key={label} rel="noreferrer" target="_blank">{label}</a>
+        ))}
       </div>
     </section>
   );
@@ -1700,6 +1787,11 @@ function ProfilePage() {
           <span>{role ?? "participant"}</span>
           <span>{form.looking_for_team ? "Looking for team" : "Team status open"}</span>
         </div>
+        <div className="profile-link-grid">
+          <ProfileLink label="GitHub" href={form.github_url} />
+          <ProfileLink label="LinkedIn" href={form.linkedin_url} />
+          <ProfileLink label="Devpost" href={form.devpost_url} />
+        </div>
       </section>
       <form className="native-card profile-form" onSubmit={handleSubmit}>
         <Field label="Display name" htmlFor="displayName">
@@ -1757,7 +1849,8 @@ function ProfilePage() {
             onChange={(event) => updateField("availability", event.target.value)}
           />
         </Field>
-        <div className="form-grid">
+        <section className="profile-form-section">
+          <p className="card-label">Social links</p>
           <Field label="GitHub" htmlFor="githubUrl">
             <input
               id="githubUrl"
@@ -1774,15 +1867,15 @@ function ProfilePage() {
               onChange={(event) => updateField("linkedin_url", event.target.value)}
             />
           </Field>
-        </div>
-        <Field label="Devpost" htmlFor="devpostUrl">
-          <input
-            id="devpostUrl"
-            inputMode="url"
-            value={form.devpost_url}
-            onChange={(event) => updateField("devpost_url", event.target.value)}
-          />
-        </Field>
+          <Field label="Devpost" htmlFor="devpostUrl">
+            <input
+              id="devpostUrl"
+              inputMode="url"
+              value={form.devpost_url}
+              onChange={(event) => updateField("devpost_url", event.target.value)}
+            />
+          </Field>
+        </section>
         <label className="check-row">
           <input
             checked={form.looking_for_team}
@@ -1862,6 +1955,16 @@ function QuickAction({ to, label, value }) {
       <span>{label}</span>
       <strong>{value}</strong>
     </Link>
+  );
+}
+
+function ProfileLink({ href, label }) {
+  if (!href) return <span className="profile-link is-empty">{label}</span>;
+
+  return (
+    <a className="profile-link" href={href} rel="noreferrer" target="_blank">
+      {label}
+    </a>
   );
 }
 

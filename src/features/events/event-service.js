@@ -42,6 +42,22 @@ export async function registerForEvent(eventId, userId) {
   return { data, error };
 }
 
+export async function leaveEvent(eventId, userId) {
+  if (!supabase) {
+    return { data: null, error: new Error("Supabase is not configured.") };
+  }
+
+  const { data, error } = await supabase
+    .from("event_registrations")
+    .update({ status: "Cancelled" })
+    .eq("event_id", eventId)
+    .eq("user_id", userId)
+    .select("id,event_id,user_id,status,created_at")
+    .single();
+
+  return { data, error };
+}
+
 export async function getEvent(eventId) {
   if (!supabase) return { data: null, error: null };
 
