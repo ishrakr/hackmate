@@ -23,7 +23,9 @@ import {
   getEventMapMarkers,
   getEventRoomAreas,
   getEventSchedule,
+  listUserEventRegistrations,
   listEvents,
+  registerForEvent,
   subscribeToEventAnnouncements,
   upsertFeedback,
 } from "../features/events/event-service.js";
@@ -243,15 +245,6 @@ function HomePage() {
         <QuickAction to="/match" label="Match" value="Eligibility" />
         <QuickAction to="/teams" label="Team" value="Set status" />
         <QuickAction to="/chat/bot" label="Bot" value="Ask" />
-      </section>
-
-      <section className="native-card">
-        <p className="card-label">Organizer note</p>
-        <h2>Events are managed by admins.</h2>
-        <p>
-          Participants browse and register from the app. Event creation and
-          participant lists live in the Bootstrap admin portal.
-        </p>
       </section>
     </ScreenStack>
   );
@@ -547,24 +540,31 @@ function OnboardingPage() {
 }
 
 function EventsPage() {
+  const { user } = useAuth();
   const [events, setEvents] = useState([]);
+  const [registrations, setRegistrations] = useState([]);
   const [status, setStatus] = useState("loading");
   const [message, setMessage] = useState("");
+  const [savingEventId, setSavingEventId] = useState("");
 
   useEffect(() => {
     let isMounted = true;
 
     async function loadEvents() {
       setStatus("loading");
-      const { data, error } = await listEvents();
+      const [eventResult, registrationResult] = await Promise.all([
+        listEvents(),
+        listUserEventRegistrations(user.id),
+      ]);
 
       if (!isMounted) return;
 
-      if (error) {
-        setMessage(error.message);
+      if (eventResult.error || registrationResult.error) {
+        setMessage(eventResult.error?.message ?? registrationResult.error?.message ?? "Events unavailable.");
         setEvents([]);
       } else {
-        setEvents(data);
+        setEvents(eventResult.data);
+        setRegistrations(registrationResult.data);
         setMessage("");
       }
 
@@ -576,15 +576,45 @@ function EventsPage() {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [user.id]);
+
+  async function handleRegister(eventId) {
+    setSavingEventId(eventId);
+    setMessage("");
+
+    const { data, error } = await registerForEvent(eventId, user.id);
+
+    if (error) {
+      setMessage(error.message);
+    } else {
+      setRegistrations((current) => [
+        data,
+        ...current.filter((registration) => registration.event_id !== eventId),
+      ]);
+    }
+
+    setSavingEventId("");
+  }
+
+  const registeredEventIds = new Set(registrations.map((registration) => registration.event_id));
+  const selectedEvent = events.find((event) => registeredEventIds.has(event.id));
 
   return (
     <ScreenStack>
       <ScreenHeader
         eyebrow="Events"
-        title="Pick your hackathon."
-        body="Browse upcoming hackathons, registration state, maps, schedules, FAQs, and announcements."
+        title="Choose your event."
+        body="Register for the hackathon you are joining. Matching unlocks after you pick an event."
       />
+
+      {selectedEvent ? (
+        <section className="native-card event-selected-card">
+          <p className="card-label">You're in</p>
+          <h2>{selectedEvent.name}</h2>
+          <p>{formatFullDate(selectedEvent.starts_at)} at {selectedEvent.location_name || "Location TBA"}</p>
+          <Link className="primary-action" to="/match">Start matching</Link>
+        </section>
+      ) : null}
 
       {status === "loading" ? <LoadingCard label="Events" body="Loading upcoming hackathons." /> : null}
       {message ? <EmptyCard title="Events unavailable" body={message} /> : null}
@@ -597,40 +627,45 @@ function EventsPage() {
       {events.length > 0 ? (
         <div className="event-list">
           {events.map((event) => (
-            <EventCard key={event.id} event={event} />
+            <EventCard
+              key={event.id}
+              event={event}
+              isRegistered={registeredEventIds.has(event.id)}
+              isSaving={savingEventId === event.id}
+              onRegister={handleRegister}
+            />
           ))}
         </div>
       ) : null}
-
-      <section className="native-card compact-card">
-        <p className="card-label">Admin-owned</p>
-        <p>
-          Event creation and participant lists are intentionally not available in
-          the participant app.
-        </p>
-      </section>
     </ScreenStack>
   );
 }
 
-function EventCard({ event }) {
+function EventCard({ event, isRegistered, isSaving, onRegister }) {
   const startsAt = formatDateParts(event.starts_at);
 
   return (
-    <Link className="event-row" to={`/events/${event.id}`}>
-      <span className="event-date">
-        <strong>{startsAt.weekday}</strong>
-        <span>{startsAt.monthDay}</span>
-      </span>
-      <span className="event-main">
-        <span className="status-pill">{formatStatus(event.registration_status)}</span>
-        <strong>{event.name}</strong>
-        <span>{startsAt.time} at {event.location_name || "Location TBA"}</span>
-      </span>
-      <span className="row-chevron" aria-hidden="true">
-        &gt;
-      </span>
-    </Link>
+    <article className={`event-showcase-card${isRegistered ? " is-selected" : ""}`}>
+      <Link className="event-showcase-main" to={`/events/${event.id}`}>
+        <span className="event-date">
+          <strong>{startsAt.weekday}</strong>
+          <span>{startsAt.monthDay}</span>
+        </span>
+        <span className="event-main">
+          <span className="status-pill">{isRegistered ? "Registered" : formatStatus(event.registration_status)}</span>
+          <strong>{event.name}</strong>
+          <span>{startsAt.time} at {event.location_name || "Location TBA"}</span>
+        </span>
+      </Link>
+      <button
+        className={isRegistered ? "secondary-action" : "primary-action"}
+        disabled={isRegistered || isSaving || event.registration_status === "closed"}
+        onClick={() => onRegister(event.id)}
+        type="button"
+      >
+        {isRegistered ? "Selected" : isSaving ? "Joining..." : "Join event"}
+      </button>
+    </article>
   );
 }
 
@@ -983,6 +1018,7 @@ function MatchPage() {
   const [actorIndex, setActorIndex] = useState(0);
   const [candidates, setCandidates] = useState([]);
   const [candidateIndex, setCandidateIndex] = useState(0);
+  const [selectedEventId, setSelectedEventId] = useState(null);
   const [status, setStatus] = useState("loading");
   const [message, setMessage] = useState("");
 
@@ -1003,6 +1039,7 @@ function MatchPage() {
         setActors([]);
       } else {
         setActors(data.actors);
+        setSelectedEventId(data.selectedEventId);
         setMessage("");
       }
 
@@ -1026,7 +1063,7 @@ function MatchPage() {
       }
 
       setStatus("loading-candidates");
-      const { data, error } = await listCandidates(actor, user.id);
+      const { data, error } = await listCandidates(actor, user.id, selectedEventId);
 
       if (!isMounted) return;
 
@@ -1047,7 +1084,7 @@ function MatchPage() {
     return () => {
       isMounted = false;
     };
-  }, [actor, user.id]);
+  }, [actor, selectedEventId, user.id]);
 
   async function handleSwipe(direction) {
     if (!actor || !candidate) return;
@@ -1068,11 +1105,11 @@ function MatchPage() {
 
   return (
     <ScreenStack>
-      <ScreenHeader
-        eyebrow="Match"
-        title="Swipe only when you need teammates."
-        body="Solo participants looking for a team and teams recruiting members can enter this pool. Complete teams stay out."
-      />
+      <section className="match-top-card">
+        <p className="card-label">Match</p>
+        <h1>Find your crew.</h1>
+        <p>Swipe right on people or recruiting teams you want to build with. Swipe left to keep looking.</p>
+      </section>
 
       {message ? <p className="auth-error" role="alert">{message}</p> : null}
       {actors.length > 1 ? (
@@ -1096,7 +1133,7 @@ function MatchPage() {
       {status === "idle" && actors.length === 0 ? (
         <EmptyCard
           title="Matching is locked."
-          body="Mark yourself as looking for a team or set one of your teams to recruiting before swiping."
+          body={selectedEventId ? "Mark yourself as looking for a team or set one of your teams to recruiting before swiping." : "Register for an event first, then come back here to match with participants from that hackathon."}
         />
       ) : null}
       {status === "idle" && actor && !candidate ? (
@@ -1114,13 +1151,9 @@ function MatchPage() {
         />
       ) : null}
 
-      <section className="native-card compact-card">
-        <p className="card-label">Eligibility rule</p>
-        <p>
-          If you already selected a complete team, this screen should show team
-          status instead of swipe cards.
-        </p>
-      </section>
+      {!selectedEventId ? (
+        <Link className="primary-action" to="/events">Choose an event</Link>
+      ) : null}
     </ScreenStack>
   );
 }
@@ -1134,7 +1167,7 @@ function MatchCard({ actor, candidate, disabled, onSwipe }) {
   const initial = title?.charAt(0) || "?";
 
   return (
-    <section className="swipe-card" aria-label={`${title} match card`}>
+    <section className="swipe-card tinder-card" aria-label={`${title} match card`}>
       <div className="swipe-card-top">
         {candidate.profile?.avatar_url ? (
           <img className="avatar-circle" src={candidate.profile.avatar_url} alt="" />
@@ -1143,22 +1176,24 @@ function MatchCard({ actor, candidate, disabled, onSwipe }) {
         )}
         <span className="status-pill">{isTeam ? "Recruiting team" : "Looking for team"}</span>
       </div>
-      <p className="card-label">{actor.type === "team" ? `For ${actor.label}` : "For you"}</p>
-      <h2>{title}</h2>
-      <p>{body}</p>
-      <div className="chip-row">
-        {isTeam && candidate.team.events?.name ? <span>{candidate.team.events.name}</span> : null}
-        {isTeam && candidate.team.github_url ? <span>GitHub</span> : null}
-        {!isTeam && candidate.profile.desired_role ? <span>{candidate.profile.desired_role}</span> : null}
-        {!isTeam && candidate.profile.experience_level ? <span>{candidate.profile.experience_level}</span> : null}
-        {!isTeam && candidate.profile.availability ? <span>{candidate.profile.availability}</span> : null}
+      <div className="swipe-card-content">
+        <p className="card-label">{actor.type === "team" ? `For ${actor.label}` : "For you"}</p>
+        <h2>{title}</h2>
+        <p>{body}</p>
+        <div className="chip-row">
+          {isTeam && candidate.team.events?.name ? <span>{candidate.team.events.name}</span> : null}
+          {isTeam && candidate.team.github_url ? <span>GitHub</span> : null}
+          {!isTeam && candidate.profile.desired_role ? <span>{candidate.profile.desired_role}</span> : null}
+          {!isTeam && candidate.profile.experience_level ? <span>{candidate.profile.experience_level}</span> : null}
+          {!isTeam && candidate.profile.availability ? <span>{candidate.profile.availability}</span> : null}
+        </div>
       </div>
-      <div className="swipe-actions">
+      <div className="swipe-actions" aria-label="Swipe actions">
         <button className="round-action reject" disabled={disabled} onClick={() => onSwipe("left")} type="button" aria-label="Skip profile">
-          No
+          ×
         </button>
         <button className="round-action accept" disabled={disabled} onClick={() => onSwipe("right")} type="button" aria-label="Express interest">
-          Yes
+          ♥
         </button>
       </div>
     </section>

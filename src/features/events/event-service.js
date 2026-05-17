@@ -13,6 +13,35 @@ export async function listEvents() {
   return { data: data ?? [], error };
 }
 
+export async function listUserEventRegistrations(userId) {
+  if (!supabase || !userId) return { data: [], error: null };
+
+  const { data, error } = await supabase
+    .from("event_registrations")
+    .select("id,event_id,user_id,status,created_at")
+    .eq("user_id", userId)
+    .order("created_at", { ascending: false });
+
+  return { data: data ?? [], error };
+}
+
+export async function registerForEvent(eventId, userId) {
+  if (!supabase) {
+    return { data: null, error: new Error("Supabase is not configured.") };
+  }
+
+  const { data, error } = await supabase
+    .from("event_registrations")
+    .upsert(
+      { event_id: eventId, user_id: userId, status: "Registered" },
+      { onConflict: "event_id,user_id" },
+    )
+    .select("id,event_id,user_id,status,created_at")
+    .single();
+
+  return { data, error };
+}
+
 export async function getEvent(eventId) {
   if (!supabase) return { data: null, error: null };
 

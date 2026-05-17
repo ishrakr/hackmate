@@ -5,20 +5,26 @@ import { listUserTeams } from "../teams/team-service.js";
 const profileColumns = "id,user_id,display_name,avatar_url,bio,desired_role,experience_level,looking_for_team,open_to_joining_team,availability,github_url,linkedin_url,devpost_url,current_team_id";
 const teamColumns = "id,event_id,name,description,project_idea,github_url,devpost_url,recruiting_members,created_by,events(id,name,starts_at)";
 
-export async function getMatchingContext(userId) {
-  const [profileResult, teamsResult] = await Promise.all([
+export async function getMatchingContext(userId, eventId = null) {
+  const [profileResult, teamsResult, registrationsResult] = await Promise.all([
     getProfile(userId),
     listUserTeams(userId),
+    listUserEventRegistrations(userId),
   ]);
 
   if (profileResult.error) return { data: null, error: profileResult.error };
   if (teamsResult.error) return { data: null, error: teamsResult.error };
+  if (registrationsResult.error) return { data: null, error: registrationsResult.error };
 
-  const recruitingTeams = (teamsResult.data ?? []).filter((team) => team.recruiting_members);
+  const registrations = registrationsResult.data ?? [];
+  const selectedEventId = eventId ?? registrations[0]?.event_id ?? null;
+  const recruitingTeams = (teamsResult.data ?? []).filter(
+    (team) => team.recruiting_members && (!selectedEventId || team.event_id === selectedEventId),
+  );
   const actors = [];
 
   if (profileResult.data?.looking_for_team || profileResult.data?.open_to_joining_team) {
-    actors.push({ type: "user", id: userId, label: "Me", profile: profileResult.data });
+    actors.push({ type: "user", id: userId, label: "Me", profile: profileResult.data, event_id: selectedEventId });
   }
 
   for (const team of recruitingTeams) {
@@ -28,27 +34,33 @@ export async function getMatchingContext(userId) {
   return {
     data: {
       actors,
+      selectedEventId,
       profile: profileResult.data,
+      registrations,
       teams: teamsResult.data ?? [],
     },
     error: null,
   };
 }
 
-export async function listCandidates(actor, userId) {
+export async function listCandidates(actor, userId, eventId = null) {
   if (!supabase || !actor) return { data: [], error: null };
 
   const swipedResult = await listSwipedTargets(actor);
   if (swipedResult.error) return { data: [], error: swipedResult.error };
 
   const swiped = swipedResult.data;
+  const selectedEventId = eventId ?? actor.event_id ?? actor.team?.event_id ?? null;
+
+  if (!selectedEventId) return { data: [], error: null };
 
   if (actor.type === "user") {
-    const [teamsResult, profilesResult] = await Promise.all([
+    const [teamsResult, profilesResult, registrationsResult] = await Promise.all([
       supabase
         .from("teams")
         .select(teamColumns)
         .eq("recruiting_members", true)
+        .eq("event_id", selectedEventId)
         .neq("created_by", userId)
         .limit(25),
       supabase
@@ -57,21 +69,25 @@ export async function listCandidates(actor, userId) {
         .or("looking_for_team.eq.true,open_to_joining_team.eq.true")
         .neq("user_id", userId)
         .limit(25),
+      listEventRegistrations(selectedEventId),
     ]);
 
     if (teamsResult.error) return { data: [], error: teamsResult.error };
     if (profilesResult.error) return { data: [], error: profilesResult.error };
+    if (registrationsResult.error) return { data: [], error: registrationsResult.error };
+
+    const registeredUsers = new Set((registrationsResult.data ?? []).map((row) => row.user_id));
 
     const teams = (teamsResult.data ?? [])
       .filter((team) => !swiped.teamIds.has(team.id))
       .map((team) => ({ type: "team", id: team.id, event_id: team.event_id, team }));
 
     const profiles = (profilesResult.data ?? [])
-      .filter((profile) => !swiped.userIds.has(profile.user_id))
+      .filter((profile) => registeredUsers.has(profile.user_id) && !swiped.userIds.has(profile.user_id))
       .map((profile) => ({
         type: "user",
         id: profile.user_id,
-        event_id: null,
+        event_id: selectedEventId,
         profile,
       }));
 
@@ -81,18 +97,24 @@ export async function listCandidates(actor, userId) {
     };
   }
 
-  const { data, error } = await supabase
-    .from("profiles")
-    .select(profileColumns)
-    .or("looking_for_team.eq.true,open_to_joining_team.eq.true")
-    .neq("user_id", userId)
-    .limit(25);
+  const [profilesResult, registrationsResult] = await Promise.all([
+    supabase
+      .from("profiles")
+      .select(profileColumns)
+      .or("looking_for_team.eq.true,open_to_joining_team.eq.true")
+      .neq("user_id", userId)
+      .limit(25),
+    listEventRegistrations(selectedEventId),
+  ]);
 
-  if (error) return { data: [], error };
+  if (profilesResult.error) return { data: [], error: profilesResult.error };
+  if (registrationsResult.error) return { data: [], error: registrationsResult.error };
+
+  const registeredUsers = new Set((registrationsResult.data ?? []).map((row) => row.user_id));
 
   return {
-    data: (data ?? [])
-      .filter((profile) => !swiped.userIds.has(profile.user_id))
+    data: (profilesResult.data ?? [])
+      .filter((profile) => registeredUsers.has(profile.user_id) && !swiped.userIds.has(profile.user_id))
       .map((profile) => ({ type: "user", id: profile.user_id, event_id: actor.team.event_id, profile })),
     error: null,
   };
@@ -198,6 +220,30 @@ async function getDefaultEventId() {
 
   if (error) return null;
   return data?.id ?? null;
+}
+
+async function listUserEventRegistrations(userId) {
+  if (!supabase || !userId) return { data: [], error: null };
+
+  const { data, error } = await supabase
+    .from("event_registrations")
+    .select("event_id,user_id,status,created_at")
+    .eq("user_id", userId)
+    .order("created_at", { ascending: false });
+
+  return { data: data ?? [], error };
+}
+
+async function listEventRegistrations(eventId) {
+  if (!supabase || !eventId) return { data: [], error: null };
+
+  const { data, error } = await supabase
+    .from("event_registrations")
+    .select("event_id,user_id,status")
+    .eq("event_id", eventId)
+    .neq("status", "Cancelled");
+
+  return { data: data ?? [], error };
 }
 
 async function listSwipedTargets(actor) {

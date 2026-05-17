@@ -518,6 +518,55 @@ h2 {
   border-radius: 999px;
 }
 
+.event-selected-card {
+  display: grid;
+  gap: 0.8rem;
+  color: #fff;
+  background:
+    radial-gradient(circle at top right, rgba(255, 255, 255, 0.24), transparent 12rem),
+    linear-gradient(145deg, #111827, #2532aa 58%, #10a88f);
+  border: 0;
+}
+
+.event-selected-card p,
+.event-selected-card .card-label {
+  color: rgba(255, 255, 255, 0.78);
+}
+
+.event-selected-card .primary-action {
+  color: var(--color-primary-dark);
+  background: #fff;
+  box-shadow: none;
+}
+
+.event-showcase-card {
+  display: grid;
+  gap: 0.9rem;
+  padding: 1rem;
+  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid rgba(228, 234, 243, 0.94);
+  border-radius: 1.45rem;
+  box-shadow: var(--shadow-card);
+}
+
+.event-showcase-card .primary-action,
+.event-showcase-card .secondary-action {
+  width: 100%;
+}
+
+.event-showcase-card.is-selected {
+  border-color: rgba(16, 168, 143, 0.38);
+  box-shadow: 0 16px 42px rgba(16, 168, 143, 0.15);
+}
+
+.event-showcase-main {
+  display: flex;
+  gap: 0.85rem;
+  align-items: center;
+  color: inherit;
+  text-decoration: none;
+}
+
 .detail-item {
   display: grid;
   gap: 0.35rem;
@@ -572,6 +621,22 @@ h2 {
   text-align: center;
 }
 
+.match-top-card {
+  display: grid;
+  gap: 0.55rem;
+  padding: 0.2rem 0.15rem 0;
+}
+
+.match-top-card h1 {
+  max-width: 9ch;
+}
+
+.match-top-card p:not(.card-label) {
+  margin-bottom: 0;
+  color: var(--color-muted);
+  line-height: 1.5;
+}
+
 .swipe-card {
   display: grid;
   gap: 1rem;
@@ -583,6 +648,40 @@ h2 {
     radial-gradient(circle at top, #9db1ff 0%, #3457f5 42%, #101827 100%);
   border: 0;
   box-shadow: 0 28px 60px rgba(18, 24, 38, 0.24);
+}
+
+.tinder-card {
+  position: relative;
+  min-height: min(31rem, calc(100svh - 16rem));
+  overflow: hidden;
+  border-radius: 2rem;
+  touch-action: pan-y;
+}
+
+.tinder-card::before,
+.tinder-card::after {
+  position: absolute;
+  inset: 0.75rem;
+  z-index: 0;
+  pointer-events: none;
+  content: "";
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 1.55rem;
+}
+
+.tinder-card > * {
+  position: relative;
+  z-index: 1;
+}
+
+.swipe-card-content {
+  display: grid;
+  gap: 0.8rem;
+}
+
+.swipe-card-content h2 {
+  margin-bottom: 0;
+  font-size: 2.2rem;
 }
 
 .swipe-card p {
@@ -635,15 +734,16 @@ h2 {
 .swipe-actions {
   display: flex;
   justify-content: center;
-  gap: 1rem;
-  padding-top: 0.35rem;
+  gap: 1.25rem;
+  padding-top: 0.5rem;
 }
 
 .round-action {
-  width: 4.25rem;
-  height: 4.25rem;
+  width: 4.65rem;
+  height: 4.65rem;
   color: var(--color-ink);
-  font-weight: 900;
+  font-size: 1.8rem;
+  font-weight: 950;
   background: #fff;
   border-radius: 999px;
   box-shadow: 0 16px 30px rgba(0, 0, 0, 0.2);
