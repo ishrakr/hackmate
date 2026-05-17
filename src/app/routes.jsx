@@ -1257,7 +1257,7 @@ function MatchPage() {
       return;
     }
 
-    if (data?.match) {
+    if (data?.matched || data?.match) {
       setMatchedCandidate(candidate);
     }
 

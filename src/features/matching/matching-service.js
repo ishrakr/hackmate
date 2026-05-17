@@ -145,7 +145,7 @@ export async function createSwipe(actor, candidate, direction) {
   if (error || direction !== "right") return { data, error };
 
   const matchResult = await createMutualMatch(actor, candidate, eventId);
-  return { data: { swipe: data, match: matchResult.data }, error: matchResult.error };
+  return { data: { swipe: data, match: matchResult.data, matched: Boolean(matchResult.matched) }, error: matchResult.error };
 }
 
 function isSelfSwipe(actor, candidate) {
@@ -160,7 +160,7 @@ async function createMutualMatch(actor, candidate, eventId) {
   if (reciprocal.error || !reciprocal.data) return reciprocal;
 
   const payload = buildMatchPayload(actor, candidate, eventId);
-  if (!payload) return { data: null, error: null };
+  if (!payload) return { data: null, error: null, matched: false };
 
   const { data, error } = await supabase
     .from("matches")
@@ -168,8 +168,8 @@ async function createMutualMatch(actor, candidate, eventId) {
     .select()
     .single();
 
-  if (error?.code === "23505") return { data: null, error: null };
-  return { data, error };
+  if (error?.code === "23505") return { data: null, error: null, matched: true };
+  return { data, error, matched: Boolean(data) };
 }
 
 async function findReciprocalRightSwipe(actor, candidate) {
