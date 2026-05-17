@@ -108,3 +108,4 @@ Audit logs should include:
 - RLS policies must restrict access to admin-only tables.
 - Sensitive data should be minimized and displayed only when necessary.
 - Event creation, event editing, and event participant lists must require admin or authorized organizer access.
+- Temporary development admin access for GitHub user `ishrakr` is mirrored in database RLS by migration `202605160004_temporary_github_admin.sql`; apply migrations after deploying admin changes.
