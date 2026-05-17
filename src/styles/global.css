@@ -1311,7 +1311,7 @@ h2 {
 
 .chat-hub-shell {
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr);
+  grid-template-rows: auto auto minmax(0, 1fr);
   min-height: 0;
   height: 100%;
   gap: 0.55rem;
@@ -1351,12 +1351,14 @@ h2 {
   line-height: 1;
 }
 
-.chat-channel-select {
+.chat-event-select {
   position: relative;
   flex: 0 0 auto;
+  max-width: 48%;
 }
 
-.chat-channel-select select {
+.chat-event-select select {
+  width: 100%;
   min-height: 2.45rem;
   padding: 0 2.1rem 0 0.85rem;
   color: var(--color-primary-dark);
@@ -1369,7 +1371,7 @@ h2 {
   outline: none;
 }
 
-.chat-channel-select::after {
+.chat-event-select::after {
   position: absolute;
   top: 50%;
   right: 0.8rem;
@@ -1380,6 +1382,36 @@ h2 {
   border-right: 2px solid currentColor;
   border-bottom: 2px solid currentColor;
   transform: translateY(-65%) rotate(45deg);
+}
+
+.chat-channel-tabs {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.45rem;
+  padding: 0.25rem;
+  background: #eef2ff;
+  border: 1px solid rgba(52, 87, 245, 0.1);
+  border-radius: 999px;
+}
+
+.chat-channel-tabs button {
+  display: inline-flex;
+  gap: 0.35rem;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.35rem;
+  padding: 0 0.6rem;
+  color: var(--color-muted);
+  font-size: 0.82rem;
+  font-weight: 900;
+  background: transparent;
+  border-radius: 999px;
+}
+
+.chat-channel-tabs button.is-active {
+  color: #fff;
+  background: linear-gradient(145deg, var(--color-primary), var(--color-primary-dark));
+  box-shadow: 0 8px 18px rgba(52, 87, 245, 0.22);
 }
 
 .chat-page-shell {

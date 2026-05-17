@@ -8,6 +8,7 @@ import {
   Outlet,
   useLocation,
   useParams,
+  useSearchParams,
 } from "react-router-dom";
 import {
   consumeOAuthFlow,
@@ -15,7 +16,7 @@ import {
   useAuth,
 } from "../features/auth/auth-context.jsx";
 import { consumeAdminOAuthIntent } from "../lib/oauth-intent.js";
-import { ChatRoom, EventChatRoom } from "../features/chat/ChatRoom.jsx";
+import { ChatRoom } from "../features/chat/ChatRoom.jsx";
 import { EventChatbot } from "../features/chat/EventChatbot.jsx";
 import {
   countLiveEvents,
@@ -1856,21 +1857,71 @@ function JoinTeamPage() {
 }
 
 function ChatPage({ title }) {
-  const location = useLocation();
+  const { user } = useAuth();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const requestedType = title.toLowerCase();
   const [channel, setChannel] = useState(requestedType);
+  const [events, setEvents] = useState([]);
+  const [message, setMessage] = useState("");
+  const [selectedEventId, setSelectedEventId] = useState(searchParams.get("event") ?? "");
+  const [status, setStatus] = useState("loading");
+  const searchKey = searchParams.toString();
 
   useEffect(() => {
     setChannel(requestedType);
   }, [requestedType]);
 
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadEventChoices() {
+      setStatus("loading");
+      const [eventResult, registrationResult] = await Promise.all([
+        listEvents(),
+        listUserEventRegistrations(user.id),
+      ]);
+
+      if (!isMounted) return;
+
+      const activeEventIds = new Set(
+        (registrationResult.data ?? [])
+          .filter((registration) => registration.status !== "Cancelled")
+          .map((registration) => registration.event_id),
+      );
+      const registeredEvents = (eventResult.data ?? []).filter((event) => activeEventIds.has(event.id));
+      const requestedEventId = new URLSearchParams(searchKey).get("event");
+      const fallbackEventId = registeredEvents[0]?.id ?? "";
+      const nextEventId = registeredEvents.some((event) => event.id === requestedEventId)
+        ? requestedEventId
+        : fallbackEventId;
+
+      setEvents(registeredEvents);
+      setSelectedEventId(nextEventId);
+      setMessage(eventResult.error?.message ?? registrationResult.error?.message ?? "");
+      setStatus("ready");
+    }
+
+    loadEventChoices();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [searchKey, user.id]);
+
   function handleChannelChange(event) {
     const nextChannel = event.target.value;
     setChannel(nextChannel);
-    const suffix = location.search || "";
-    navigate(`/chat/${nextChannel}${suffix}`, { replace: true });
+    navigate(`/chat/${nextChannel}${selectedEventId ? `?event=${selectedEventId}` : ""}`, { replace: true });
   }
+
+  function handleEventChange(event) {
+    const nextEventId = event.target.value;
+    setSelectedEventId(nextEventId);
+    setSearchParams(nextEventId ? { event: nextEventId } : {});
+  }
+
+  const selectedEvent = events.find((event) => event.id === selectedEventId);
 
   return (
     <ScreenStack className="chat-screen-stack">
@@ -1878,26 +1929,63 @@ function ChatPage({ title }) {
         <header className="chat-hub-topbar">
           <div>
             <p className="card-label">Chat</p>
-            <h1>{getChatChannelTitle(channel)}</h1>
+            <h1>{selectedEvent?.name ?? getChatChannelTitle(channel)}</h1>
           </div>
-          <label className="chat-channel-select" htmlFor="chatChannel">
-            <span className="sr-only">Channel</span>
-            <select id="chatChannel" value={channel} onChange={handleChannelChange}>
-              <option value="lobby">Lobby</option>
-              <option value="support">Support</option>
-              <option value="bot">Bot</option>
+          <label className="chat-event-select" htmlFor="chatEventSelect">
+            <span className="sr-only">Event</span>
+            <select
+              disabled={status !== "ready" || events.length === 0}
+              id="chatEventSelect"
+              value={selectedEventId}
+              onChange={handleEventChange}
+            >
+              {events.length === 0 ? <option value="">No events</option> : null}
+              {events.map((event) => (
+                <option key={event.id} value={event.id}>{event.name}</option>
+              ))}
             </select>
           </label>
         </header>
-        {channel === "bot" ? (
-          <EventChatbot compact />
+        <div className="chat-channel-tabs" aria-label="Event chat channels">
+          {chatChannels.map((item) => (
+            <button
+              className={channel === item.value ? "is-active" : ""}
+              key={item.value}
+              onClick={() => handleChannelChange({ target: { value: item.value } })}
+              type="button"
+            >
+              <i className={item.icon} aria-hidden="true" />
+              {item.label}
+            </button>
+          ))}
+        </div>
+        {status === "loading" ? (
+          <section className="native-card compact-card"><p>Loading your event channels.</p></section>
+        ) : message ? (
+          <section className="native-card compact-card"><p className="auth-error">{message}</p></section>
+        ) : !selectedEventId ? (
+          <section className="native-card compact-card"><p>Register for an event first to unlock lobby, support, and bot channels.</p></section>
+        ) : channel === "bot" ? (
+          <EventChatbot compact eventId={selectedEventId} events={events} />
         ) : (
-          <EventChatRoom title={channel === "support" ? "Organizer support" : "Lobby"} type={channel} compact />
+          <ChatRoom
+            compact
+            eventId={selectedEventId}
+            key={`${channel}-${selectedEventId}`}
+            title={channel === "support" ? "Organizer support" : selectedEvent?.name ?? "Lobby"}
+            type={channel}
+          />
         )}
       </section>
     </ScreenStack>
   );
 }
+
+const chatChannels = [
+  { icon: "fa-solid fa-comments", label: "Lobby", value: "lobby" },
+  { icon: "fa-solid fa-headset", label: "Support", value: "support" },
+  { icon: "fa-solid fa-robot", label: "Bot", value: "bot" },
+];
 
 function ChatbotPage() {
   return <ChatPage title="bot" />;

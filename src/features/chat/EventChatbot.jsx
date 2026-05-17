@@ -14,7 +14,7 @@ import {
   getSuggestedBotQuestions,
 } from "./chatbot-service.js";
 
-export function EventChatbot({ compact = false }) {
+export function EventChatbot({ compact = false, eventId: controlledEventId = null, events: providedEvents = null }) {
   const { user } = useAuth();
   const [announcements, setAnnouncements] = useState([]);
   const [draft, setDraft] = useState("");
@@ -37,6 +37,14 @@ export function EventChatbot({ compact = false }) {
 
     async function loadEvents() {
       setStatus("loading");
+      if (controlledEventId) {
+        setEvents(providedEvents ?? []);
+        setEventId(controlledEventId);
+        setMessage("");
+        setStatus("loadingEvent");
+        return;
+      }
+
       const [eventResult, registrationResult] = await Promise.all([
         listEvents(),
         listUserEventRegistrations(user.id),
@@ -72,7 +80,7 @@ export function EventChatbot({ compact = false }) {
     return () => {
       isMounted = false;
     };
-  }, [searchKey, user.id]);
+  }, [controlledEventId, providedEvents, searchKey, user.id]);
 
   useEffect(() => {
     if (!eventId) return undefined;
@@ -130,6 +138,7 @@ export function EventChatbot({ compact = false }) {
   }, [messages.length, status]);
 
   function handleEventChange(nextEventId) {
+    if (controlledEventId) return;
     setEventId(nextEventId);
     setSearchParams(nextEventId ? { event: nextEventId } : {});
   }
@@ -171,7 +180,7 @@ export function EventChatbot({ compact = false }) {
         </span>
       </div>
 
-      {events.length > 0 ? (
+      {!controlledEventId && events.length > 0 ? (
         <label className="form-field compact-selector" htmlFor="botEvent">
           <span>Event</span>
           <select
