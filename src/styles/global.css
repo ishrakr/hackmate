@@ -651,6 +651,12 @@ h2 {
   border: 0;
 }
 
+.event-team-actions,
+.setup-reminder-card {
+  display: grid;
+  gap: 0.7rem;
+}
+
 .event-selected-card p,
 .event-selected-card .card-label {
   color: rgba(255, 255, 255, 0.78);

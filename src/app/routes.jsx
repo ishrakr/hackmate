@@ -241,17 +241,27 @@ function MobileAppLayout() {
 function HomePage() {
   const [liveEventCount, setLiveEventCount] = useState(null);
   const [events, setEvents] = useState([]);
+  const [profile, setProfile] = useState(null);
   const [registrations, setRegistrations] = useState([]);
+  const [teams, setTeams] = useState([]);
   const { user } = useAuth();
 
   useEffect(() => {
     let isMounted = true;
 
-    Promise.all([countLiveEvents(), listEvents(), listUserEventRegistrations(user.id)]).then(([countResult, eventsResult, registrationResult]) => {
+    Promise.all([
+      countLiveEvents(),
+      listEvents(),
+      listUserEventRegistrations(user.id),
+      getProfile(user.id),
+      listUserTeams(user.id),
+    ]).then(([countResult, eventsResult, registrationResult, profileResult, teamResult]) => {
       if (!isMounted) return;
       setLiveEventCount(countResult.count);
       setEvents(eventsResult.data ?? []);
       setRegistrations((registrationResult.data ?? []).filter((registration) => registration.status !== "Cancelled"));
+      setProfile(profileResult.data);
+      setTeams(teamResult.data ?? []);
     });
 
     return () => {
@@ -263,6 +273,9 @@ function HomePage() {
   const joinedEvents = events.filter((event) => registrations.some((registration) => registration.event_id === event.id));
   const currentEvents = joinedEvents.filter((event) => new Date(event.starts_at).getTime() <= now && (!event.ends_at || new Date(event.ends_at).getTime() >= now));
   const upcomingEvents = events.filter((event) => new Date(event.starts_at).getTime() > now).slice(0, 3);
+  const joinedEventIds = new Set(joinedEvents.map((event) => event.id));
+  const hasEventTeam = teams.some((team) => joinedEventIds.has(team.event_id));
+  const needsTeamSetup = joinedEvents.length > 0 && !hasEventTeam && !profile?.looking_for_team && !profile?.open_to_joining_team;
 
   return (
     <ScreenStack>
@@ -282,6 +295,15 @@ function HomePage() {
           {(currentEvents.length ? currentEvents : joinedEvents).slice(0, 2).map((event) => (
             <HomeEventRow key={event.id} event={event} />
           ))}
+        </section>
+      ) : null}
+
+      {needsTeamSetup ? (
+        <section className="native-card compact-card setup-reminder-card">
+          <p className="card-label">Finish setup</p>
+          <h2>Choose how you are participating.</h2>
+          <p>Tell Hackmate if you are solo, joining with a team, or recruiting teammates.</p>
+          <Link className="primary-action" to="/onboarding">Continue onboarding</Link>
         </section>
       ) : null}
 
@@ -576,6 +598,9 @@ function OnboardingPage() {
         title="What is your team status?"
         body="This choice controls the rest of the app. Swipe only appears for people or teams still looking for members."
       />
+      <Link className="secondary-action" to="/">
+        Back home
+      </Link>
 
       <section className="choice-list" aria-label="Team status choices">
         <ChoiceButton
@@ -684,7 +709,6 @@ function EventsPage() {
 
   const activeRegistrations = registrations.filter((registration) => registration.status !== "Cancelled");
   const registeredEventIds = new Set(activeRegistrations.map((registration) => registration.event_id));
-  const selectedEvent = events.find((event) => registeredEventIds.has(event.id));
   const filteredEvents = events.filter((event) => {
     const query = search.trim().toLowerCase();
     if (!query) return true;
@@ -767,8 +791,11 @@ function EventCard({ event, isRegistered, isSaving, onLeave, onRegister }) {
 
 function EventDetailPage() {
   const { eventId } = useParams();
+  const { user } = useAuth();
   const [event, setEvent] = useState(null);
   const [announcements, setAnnouncements] = useState([]);
+  const [isJoined, setIsJoined] = useState(false);
+  const [teams, setTeams] = useState([]);
   const [status, setStatus] = useState("loading");
   const [message, setMessage] = useState("");
 
@@ -777,9 +804,11 @@ function EventDetailPage() {
 
     async function loadEvent() {
       setStatus("loading");
-      const [{ data, error }, announcementResult] = await Promise.all([
+      const [{ data, error }, announcementResult, registrationResult, teamResult] = await Promise.all([
         getEvent(eventId),
         getEventAnnouncements(eventId),
+        listUserEventRegistrations(user.id),
+        listUserTeams(user.id),
       ]);
 
       if (!isMounted) return;
@@ -791,6 +820,8 @@ function EventDetailPage() {
       } else {
         setEvent(data);
         setAnnouncements(announcementResult.data ?? []);
+        setIsJoined((registrationResult.data ?? []).some((row) => row.event_id === eventId && row.status !== "Cancelled"));
+        setTeams((teamResult.data ?? []).filter((team) => team.event_id === eventId));
         setMessage(announcementResult.error?.message ?? "");
       }
 
@@ -802,7 +833,7 @@ function EventDetailPage() {
     return () => {
       isMounted = false;
     };
-  }, [eventId]);
+  }, [eventId, user.id]);
 
   useEffect(() => {
     if (!eventId) return undefined;
@@ -841,6 +872,20 @@ function EventDetailPage() {
           {event.ends_at ? <span>Ends {formatFullDate(event.ends_at)}</span> : null}
         </div>
       </section>
+
+      {isJoined ? (
+        <section className="native-card event-team-actions">
+          <p className="card-label">Your team</p>
+          <h2>{teams[0]?.name ?? "Set up your team mode"}</h2>
+          <p>{teams[0] ? "Manage your team, chat, or recruit from this event." : "Choose whether you are solo, joining as a team, or recruiting teammates."}</p>
+          <div className="home-action-row">
+            <Link className="primary-action" to={teams[0] ? `/teams/${teams[0].id}` : "/onboarding"}>
+              {teams[0] ? "Manage team" : "Team setup"}
+            </Link>
+            <Link className="secondary-action" to={`/chat/lobby?event=${event.id}`}>Event chat</Link>
+          </div>
+        </section>
+      ) : null}
 
       {announcements.length > 0 ? (
         <section className="native-card event-section">
@@ -1312,7 +1357,6 @@ function MatchCard({ actor, candidate, disabled, onOpen, onSwipe }) {
         <div className="chip-row">
           {isTeam && candidate.team.events?.name ? <span>{candidate.team.events.name}</span> : null}
           {isTeam && candidate.team.github_url ? <span>GitHub</span> : null}
-          {!isTeam && candidate.profile.desired_role ? <span>{candidate.profile.desired_role}</span> : null}
           {!isTeam && candidate.profile.experience_level ? <span>{candidate.profile.experience_level}</span> : null}
           {!isTeam && candidate.profile.availability ? <span>{candidate.profile.availability}</span> : null}
         </div>
@@ -1854,7 +1898,7 @@ function ProfilePage() {
           <div>
             <p className="card-label">Profile</p>
             <h1>{displayName}</h1>
-            <p>{form.desired_role || "Add your role"} · {form.experience_level || "Experience TBA"}</p>
+            <p>{form.experience_level || "Experience TBA"} · {form.availability || "Availability TBA"}</p>
           </div>
         </div>
         <p>{form.bio || "Add a short intro so teams know what you want to build."}</p>
@@ -1883,14 +1927,6 @@ function ProfilePage() {
           />
         </Field>
         <div className="form-grid">
-          <Field label="Desired role" htmlFor="desiredRole">
-            <input
-              id="desiredRole"
-              placeholder="Frontend, backend, designer..."
-              value={form.desired_role}
-              onChange={(event) => updateField("desired_role", event.target.value)}
-            />
-          </Field>
           <Field label="Experience" htmlFor="experienceLevel">
             <select
               id="experienceLevel"
@@ -2025,7 +2061,7 @@ function ProfileLink({ href, label }) {
 
 function FeaturedSkillsEditor({ skills = [], onChange }) {
   const levels = ["Beginner", "Advanced", "Professional"];
-  const normalizedSkills = skills.length ? skills : [{ name: "", level: "Beginner" }];
+  const normalizedSkills = skills.slice(0, 5);
 
   function updateSkill(index, field, value) {
     onChange(normalizedSkills.map((skill, skillIndex) => skillIndex === index ? { ...skill, [field]: value } : skill).slice(0, 5));
@@ -2043,9 +2079,13 @@ function FeaturedSkillsEditor({ skills = [], onChange }) {
   return (
     <section className="profile-form-section skill-editor">
       <div className="section-row">
-        <p className="card-label">Featured skills</p>
-        <button className="secondary-action" disabled={normalizedSkills.length >= 5} onClick={addSkill} type="button">Add</button>
+        <div>
+          <p className="card-label">Featured skills</p>
+          <small>Up to 5 skills shown in matching.</small>
+        </div>
+        <button className="secondary-action" disabled={normalizedSkills.length >= 5} onClick={addSkill} type="button">Add skill</button>
       </div>
+      {normalizedSkills.length === 0 ? <p className="fine-print">Add your best skills so teammates know what you bring.</p> : null}
       {normalizedSkills.map((skill, index) => (
         <div className="skill-row" key={index}>
           <input
@@ -2239,7 +2279,6 @@ function profileToForm(profile) {
     github_url: profile?.github_url ?? "",
     devpost_url: profile?.devpost_url ?? "",
     experience_level: profile?.experience_level ?? "",
-    desired_role: profile?.desired_role ?? "",
     looking_for_team: Boolean(profile?.looking_for_team),
     open_to_joining_team: Boolean(profile?.open_to_joining_team),
     availability: profile?.availability ?? "",
@@ -2259,7 +2298,6 @@ function formToProfile(form, user) {
     github_url: emptyToNull(form.github_url),
     devpost_url: emptyToNull(form.devpost_url),
     experience_level: emptyToNull(form.experience_level),
-    desired_role: emptyToNull(form.desired_role),
     looking_for_team: form.looking_for_team,
     open_to_joining_team: form.open_to_joining_team,
     availability: emptyToNull(form.availability),
