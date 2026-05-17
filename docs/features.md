@@ -66,6 +66,14 @@ Teams support:
 - QR-based joining.
 - Team chat.
 
+Build order 6 adds the first team management flow:
+
+- Authenticated users can create a team for an existing event.
+- The creator is added as an approved team member and their profile is linked to the new team.
+- Users can view their approved teams.
+- Team profiles show event, project idea, recruiting state, project links, and members.
+- Team profile editing supports name, description, project idea, GitHub, Devpost, and recruiting state.
+
 ## Events
 
 The participant Events screen displays upcoming admin-created hackathons with:

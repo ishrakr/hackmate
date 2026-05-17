@@ -22,6 +22,12 @@ import {
   getProfile,
   upsertProfile,
 } from "../features/profiles/profile-service.js";
+import {
+  createTeam,
+  getTeam,
+  listUserTeams,
+  updateTeam,
+} from "../features/teams/team-service.js";
 
 const bottomTabs = [
   { to: "/", label: "Home", mark: "H" },
@@ -952,6 +958,65 @@ function MatchPage() {
 }
 
 function TeamsPage() {
+  const { user } = useAuth();
+  const [teams, setTeams] = useState([]);
+  const [events, setEvents] = useState([]);
+  const [form, setForm] = useState({ event_id: "", name: "", description: "", project_idea: "", role: "Team lead", recruiting_members: false });
+  const [status, setStatus] = useState("loading");
+  const [message, setMessage] = useState("");
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadTeams() {
+      setStatus("loading");
+      const [teamResult, eventResult] = await Promise.all([listUserTeams(user.id), listEvents()]);
+
+      if (!isMounted) return;
+
+      setTeams(teamResult.data ?? []);
+      setEvents(eventResult.data ?? []);
+      setMessage(teamResult.error?.message || eventResult.error?.message || "");
+      setStatus("idle");
+    }
+
+    loadTeams();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [user.id]);
+
+  function updateForm(field, value) {
+    setForm((current) => ({ ...current, [field]: value }));
+  }
+
+  async function handleCreateTeam(event) {
+    event.preventDefault();
+    setStatus("saving");
+    setMessage("");
+
+    const { data, error } = await createTeam({
+      userId: user.id,
+      role: form.role,
+      team: {
+        event_id: form.event_id,
+        name: form.name.trim(),
+        description: emptyToNull(form.description),
+        project_idea: emptyToNull(form.project_idea),
+        recruiting_members: form.recruiting_members,
+      },
+    });
+
+    if (error) {
+      setMessage(error.message);
+      setStatus("idle");
+      return;
+    }
+
+    window.location.assign(`/teams/${data.id}`);
+  }
+
   return (
     <ScreenStack>
       <ScreenHeader
@@ -960,49 +1025,178 @@ function TeamsPage() {
         body="Add existing members, request to join by QR, or mark your team as recruiting."
       />
 
-      <section className="native-card">
-        <p className="card-label">Current team draft</p>
-        <h2>Project Night Owls</h2>
-        <div className="member-stack">
-          {sampleMembers.map((member) => (
-            <span key={member} className="member-pill">
-              {member}
-            </span>
+      {message ? <p className="auth-error" role="alert">{message}</p> : null}
+      {status === "loading" ? <LoadingCard label="Teams" body="Loading your teams." /> : null}
+      {teams.length > 0 ? (
+        <section className="choice-list" aria-label="Your teams">
+          {teams.map((team) => (
+            <ChoiceCard
+              key={team.id}
+              title={team.name}
+              body={`${team.events?.name ?? "Event"} · ${team.recruiting_members ? "Recruiting" : "Complete or private"}`}
+              action="Open"
+              to={`/teams/${team.id}`}
+            />
           ))}
-          <Link className="member-pill add-member" to="/onboarding">
-            Add member
-          </Link>
-        </div>
-      </section>
+        </section>
+      ) : status !== "loading" ? (
+        <EmptyCard title="No team yet." body="Create a team for an event, then invite or approve teammates in later build steps." />
+      ) : null}
 
-      <section className="choice-list">
-        <ChoiceCard
-          title="Team is complete"
-          body="Hide swipe and keep your team focused on event prep."
-          action="Save complete"
-          to="/teams/complete-team"
-        />
-        <ChoiceCard
-          title="Recruit more members"
-          body="Open roles and let the team swipe through eligible participants."
-          action="Open recruiting"
-          to="/match"
-        />
-      </section>
+      <form className="native-card profile-form" onSubmit={handleCreateTeam}>
+        <p className="card-label">Create team</p>
+        <Field label="Event" htmlFor="teamEvent">
+          <select id="teamEvent" required value={form.event_id} onChange={(event) => updateForm("event_id", event.target.value)}>
+            <option value="">Choose event</option>
+            {events.map((event) => (
+              <option key={event.id} value={event.id}>{event.name}</option>
+            ))}
+          </select>
+        </Field>
+        <Field label="Team name" htmlFor="teamName">
+          <input id="teamName" required value={form.name} onChange={(event) => updateForm("name", event.target.value)} />
+        </Field>
+        <Field label="Your team role" htmlFor="teamRole">
+          <input id="teamRole" value={form.role} onChange={(event) => updateForm("role", event.target.value)} />
+        </Field>
+        <Field label="Project idea" htmlFor="teamProject">
+          <textarea id="teamProject" rows="3" value={form.project_idea} onChange={(event) => updateForm("project_idea", event.target.value)} />
+        </Field>
+        <Field label="Team description" htmlFor="teamDescription">
+          <textarea id="teamDescription" rows="3" value={form.description} onChange={(event) => updateForm("description", event.target.value)} />
+        </Field>
+        <label className="check-row">
+          <input checked={form.recruiting_members} type="checkbox" onChange={(event) => updateForm("recruiting_members", event.target.checked)} />
+          <span>This team is recruiting members.</span>
+        </label>
+        <button className="primary-action" disabled={status === "saving" || events.length === 0} type="submit">
+          {status === "saving" ? "Creating..." : "Create team"}
+        </button>
+      </form>
     </ScreenStack>
   );
 }
 
 function TeamDetailPage() {
   const { teamId } = useParams();
+  const [team, setTeam] = useState(null);
+  const [form, setForm] = useState({ name: "", description: "", project_idea: "", github_url: "", devpost_url: "", recruiting_members: false });
+  const [status, setStatus] = useState("loading");
+  const [message, setMessage] = useState("");
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadTeam() {
+      setStatus("loading");
+      const { data, error } = await getTeam(teamId);
+
+      if (!isMounted) return;
+
+      if (error) {
+        setMessage(error.message);
+      } else if (!data) {
+        setMessage("This team was not found or you do not have access.");
+      } else {
+        setTeam(data);
+        setForm(teamToForm(data));
+        setMessage("");
+      }
+
+      setStatus("idle");
+    }
+
+    loadTeam();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [teamId]);
+
+  function updateForm(field, value) {
+    setForm((current) => ({ ...current, [field]: value }));
+  }
+
+  async function handleSave(event) {
+    event.preventDefault();
+    setStatus("saving");
+    setMessage("");
+
+    const { data, error } = await updateTeam(teamId, formToTeam(form));
+
+    if (error) {
+      setMessage(error.message);
+      setStatus("idle");
+      return;
+    }
+
+    setTeam((current) => ({ ...current, ...data }));
+    setMessage("Team saved.");
+    setStatus("idle");
+  }
+
+  if (status === "loading") {
+    return <LoadingCard label="Team" body="Loading team profile." />;
+  }
+
+  if (message && !team) {
+    return <EmptyCard title="Team unavailable" body={message} />;
+  }
 
   return (
     <ScreenStack>
       <ScreenHeader
         eyebrow="Team"
-        title={formatRouteLabel(teamId)}
-        body="Team profile, members, open roles, required skills, project links, and recruiting state will live here."
+        title={team.name}
+        body={team.description || "Team profile, members, project links, and recruiting state."}
       />
+      <section className="native-card event-section">
+        <p className="card-label">{team.events?.name ?? "Event"}</p>
+        <h2>{team.project_idea || "Project idea TBA"}</h2>
+        <div className="chip-row">
+          <span>{team.recruiting_members ? "Recruiting members" : "Not recruiting"}</span>
+          {team.github_url ? <span>GitHub linked</span> : null}
+          {team.devpost_url ? <span>Devpost linked</span> : null}
+        </div>
+      </section>
+      <section className="native-card event-section">
+        <p className="card-label">Members</p>
+        <div className="member-stack">
+          {(team.team_members ?? []).map((member) => (
+            <span className="member-pill" key={member.id}>
+              {member.profiles?.display_name ?? "Team member"}{member.role ? ` · ${member.role}` : ""}
+            </span>
+          ))}
+        </div>
+      </section>
+      <form className="native-card profile-form" onSubmit={handleSave}>
+        <p className="card-label">Edit team</p>
+        <Field label="Team name" htmlFor="editTeamName">
+          <input id="editTeamName" required value={form.name} onChange={(event) => updateForm("name", event.target.value)} />
+        </Field>
+        <Field label="Project idea" htmlFor="editTeamProject">
+          <textarea id="editTeamProject" rows="3" value={form.project_idea} onChange={(event) => updateForm("project_idea", event.target.value)} />
+        </Field>
+        <Field label="Description" htmlFor="editTeamDescription">
+          <textarea id="editTeamDescription" rows="3" value={form.description} onChange={(event) => updateForm("description", event.target.value)} />
+        </Field>
+        <div className="form-grid">
+          <Field label="GitHub URL" htmlFor="editTeamGithub">
+            <input id="editTeamGithub" inputMode="url" value={form.github_url} onChange={(event) => updateForm("github_url", event.target.value)} />
+          </Field>
+          <Field label="Devpost URL" htmlFor="editTeamDevpost">
+            <input id="editTeamDevpost" inputMode="url" value={form.devpost_url} onChange={(event) => updateForm("devpost_url", event.target.value)} />
+          </Field>
+        </div>
+        <label className="check-row">
+          <input checked={form.recruiting_members} type="checkbox" onChange={(event) => updateForm("recruiting_members", event.target.checked)} />
+          <span>This team is recruiting members.</span>
+        </label>
+        <button className="primary-action" disabled={status === "saving"} type="submit">
+          {status === "saving" ? "Saving..." : "Save team"}
+        </button>
+        {message ? <p className={message === "Team saved." ? "form-success" : "auth-error"}>{message}</p> : null}
+      </form>
       <MenuRow to="chat" title="Team channel" detail="Members only" />
     </ScreenStack>
   );
@@ -1691,6 +1885,28 @@ function formToProfile(form, user) {
     open_to_joining_team: form.open_to_joining_team,
     availability: emptyToNull(form.availability),
     contact_preferences: {},
+  };
+}
+
+function teamToForm(team) {
+  return {
+    name: team?.name ?? "",
+    description: team?.description ?? "",
+    project_idea: team?.project_idea ?? "",
+    github_url: team?.github_url ?? "",
+    devpost_url: team?.devpost_url ?? "",
+    recruiting_members: Boolean(team?.recruiting_members),
+  };
+}
+
+function formToTeam(form) {
+  return {
+    name: form.name.trim(),
+    description: emptyToNull(form.description),
+    project_idea: emptyToNull(form.project_idea),
+    github_url: emptyToNull(form.github_url),
+    devpost_url: emptyToNull(form.devpost_url),
+    recruiting_members: form.recruiting_members,
   };
 }
 
