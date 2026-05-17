@@ -859,59 +859,66 @@ function EventDetailPage() {
   }
 
   const startsAt = formatFullDate(event.starts_at);
+  const artwork = event.cover_url || event.banner_url;
 
   return (
     <ScreenStack>
-      <ScreenHeader
-        eyebrow="Event"
-        title={event.name}
-        body={event.description || "Everything participants need during the event: schedule, map, parking, FAQs, announcements, and feedback."}
-      />
-
-      <section className="event-hero native-card">
-        <p className="card-label">{formatStatus(event.registration_status)}</p>
-        <h2>{startsAt}</h2>
-        <p>{event.location_name || "Location TBA"}</p>
-        {event.address ? <p className="fine-print">{event.address}</p> : null}
-        <div className="chip-row">
-          {event.capacity ? <span>{event.capacity} spots</span> : null}
-          {event.ends_at ? <span>Ends {formatFullDate(event.ends_at)}</span> : null}
+      <section className="event-detail-card">
+        {artwork ? <img className="event-detail-cover" src={artwork} alt="" /> : null}
+        <div className="event-detail-head">
+          {event.logo_url ? <img className="event-logo" src={event.logo_url} alt="" /> : null}
+          <div>
+            <p className="card-label">{formatStatus(event.registration_status)}</p>
+            <h1>{event.name}</h1>
+            <p>{event.description || "Event details, team actions, schedule, FAQ, map, and support."}</p>
+          </div>
+        </div>
+        <div className="event-fact-grid">
+          <span><strong>{startsAt}</strong><small>Starts</small></span>
+          <span><strong>{event.location_name || "TBA"}</strong><small>Location</small></span>
+          {event.capacity ? <span><strong>{event.capacity}</strong><small>Spots</small></span> : null}
         </div>
       </section>
 
-      {isJoined ? (
-        <section className="native-card event-team-actions">
-          <p className="card-label">Your team</p>
-          <h2>{teams[0]?.name ?? "Set up your team mode"}</h2>
-          <p>{teams[0] ? "Manage your team, chat, or recruit from this event." : "Choose whether you are solo, joining as a team, or recruiting teammates."}</p>
-          <div className="home-action-row">
-            <Link className="primary-action" to={teams[0] ? `/teams/${teams[0].id}` : "/onboarding"}>
-              {teams[0] ? "Manage team" : "Team setup"}
-            </Link>
-            <Link className="secondary-action" to={`/chat/lobby?event=${event.id}`}>Event chat</Link>
+      <details className="native-card compact-details" open>
+        <summary>Team and event actions</summary>
+        {isJoined ? (
+          <div className="event-team-actions">
+            <p>{teams[0] ? `You are on ${teams[0].name}.` : "Choose whether you are solo, joining as a team, or recruiting teammates."}</p>
+            <div className="home-action-row">
+              <Link className="primary-action" to={teams[0] ? `/teams/${teams[0].id}` : "/onboarding"}>
+                {teams[0] ? "Manage team" : "Team setup"}
+              </Link>
+              <Link className="secondary-action" to={`/chat/lobby?event=${event.id}`}>Event chat</Link>
+            </div>
           </div>
-        </section>
-      ) : null}
+        ) : <p>Join this event from the Events page to unlock team actions and event chat.</p>}
+      </details>
 
       {announcements.length > 0 ? (
-        <section className="native-card event-section">
-          <p className="card-label">Announcements</p>
-          {announcements.map((announcement) => (
-            <article className="detail-item" key={announcement.id}>
-              <strong>{announcement.title}</strong>
-              <p>{announcement.body}</p>
-            </article>
-          ))}
-        </section>
+        <details className="native-card compact-details" open>
+          <summary>Announcements</summary>
+          <div className="event-section">
+            {announcements.map((announcement) => (
+              <article className="detail-item" key={announcement.id}>
+                <strong>{announcement.title}</strong>
+                <p>{announcement.body}</p>
+              </article>
+            ))}
+          </div>
+        </details>
       ) : null}
 
-      <div className="menu-list" aria-label="Event sections">
-        <MenuRow to="map" title="Map and parking" detail="Venue, parking, entrances" />
-        <MenuRow to="schedule" title="Schedule" detail="Talks, food, judging" />
-        <MenuRow to="faq" title="FAQ" detail="Rules, hours, restrictions" />
-        <MenuRow to={`/chat/bot?event=${event.id}`} title="Ask bot" detail="FAQ, schedule, location" />
-        <MenuRow to="feedback" title="Feedback" detail="Post-event survey" />
-      </div>
+      <details className="native-card compact-details" open>
+        <summary>Event tools</summary>
+        <div className="compact-menu-grid" aria-label="Event sections">
+          <MenuRow to="map" title="Map" detail="Venue and parking" />
+          <MenuRow to="schedule" title="Schedule" detail="Talks and judging" />
+          <MenuRow to="faq" title="FAQ" detail="Rules and logistics" />
+          <MenuRow to={`/chat/bot?event=${event.id}`} title="Ask bot" detail="Event answers" />
+          <MenuRow to="feedback" title="Feedback" detail="Survey" />
+        </div>
+      </details>
     </ScreenStack>
   );
 }
