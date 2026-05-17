@@ -40,6 +40,11 @@ export async function createTeam({ team, userId, role }) {
 
   if (memberError) return { data: createdTeam, error: memberError };
 
+  await supabase.from("chats").insert({
+    team_id: createdTeam.id,
+    type: "team",
+  });
+
   await supabase
     .from("profiles")
     .update({ current_team_id: createdTeam.id, looking_for_team: false, open_to_joining_team: false })
