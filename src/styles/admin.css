@@ -1,0 +1,137 @@
+:root {
+  color-scheme: light;
+  font-family: var(--bs-body-font-family, system-ui, -apple-system, "Segoe UI", sans-serif);
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  --admin-sidebar-width: 18rem;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  min-width: 1024px;
+  min-height: 100vh;
+  margin: 0;
+  background: #f7f8fb;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+.admin-shell {
+  display: grid;
+  grid-template-columns: var(--admin-sidebar-width) minmax(0, 1fr);
+  min-height: 100vh;
+  color: #212529;
+  background: #f7f8fb;
+}
+
+.admin-auth-shell {
+  display: block;
+  background:
+    radial-gradient(circle at top left, rgba(13, 110, 253, 0.16), transparent 28rem),
+    #f7f8fb;
+}
+
+.admin-sidebar {
+  position: sticky;
+  top: 0;
+  display: grid;
+  min-height: 100vh;
+  gap: 1.5rem;
+  align-content: start;
+  padding: 1.5rem;
+  color: #fff;
+  background:
+    radial-gradient(circle at top, rgba(52, 87, 245, 0.4), transparent 18rem),
+    linear-gradient(180deg, #0f172a, #111827 55%, #182338);
+}
+
+.admin-sidebar-top,
+.admin-sidebar-footer {
+  display: grid;
+  gap: 0.9rem;
+}
+
+.admin-sidebar-footer {
+  align-self: end;
+}
+
+.admin-brand {
+  display: inline-flex;
+  gap: 0.65rem;
+  align-items: center;
+  color: #fff;
+  font-weight: 850;
+  text-decoration: none;
+  letter-spacing: -0.04em;
+}
+
+.admin-brand:hover {
+  color: #fff;
+}
+
+.app-brand-mark {
+  display: grid;
+  width: 2.1rem;
+  height: 2.1rem;
+  color: #fff;
+  place-items: center;
+  background: linear-gradient(145deg, #3457f5, #10a88f);
+  border-radius: 0.75rem;
+  box-shadow: 0 10px 22px rgba(52, 87, 245, 0.26);
+}
+
+.admin-sidebar-copy {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.72);
+  line-height: 1.5;
+}
+
+.admin-sidebar-user {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.admin-sidebar-user strong {
+  color: #fff;
+}
+
+.admin-sidebar-user span {
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 0.92rem;
+}
+
+.admin-content {
+  min-width: 0;
+}
+
+.admin-lead {
+  max-width: 44rem;
+}
+
+.admin-search {
+  flex: 1 1 20rem;
+  max-width: 32rem;
+}
+
+.admin-filter-slot {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 0.75rem;
+  min-width: min(100%, 14rem);
+}
+
+.admin-wrap {
+  max-width: 24rem;
+  white-space: normal;
+  word-break: break-word;
+}

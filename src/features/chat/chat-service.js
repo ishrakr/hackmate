@@ -67,28 +67,51 @@ export async function sendChatMessage({ body, chatId, senderId }) {
     .select(messageColumns)
     .single();
 
-  return { data, error };
+  if (error || !data) return { data, error };
+
+  const profiles = await getSenderProfiles([data]);
+  return {
+    data: {
+      ...data,
+      sender_profile: profiles.get(data.sender_id) ?? null,
+    },
+    error: null,
+  };
 }
 
-export function subscribeToChatMessages(chatId, onChange) {
-  if (!supabase || !chatId) return () => {};
+export function subscribeToChatMessages(chatId, onMessage, onStatusChange) {
+  if (!supabase || !chatId) {
+    return { broadcast: () => {}, unsubscribe: () => {} };
+  }
 
   const channel = supabase
-    .channel(`chat:${chatId}`)
-    .on(
-      "postgres_changes",
-      {
-        event: "*",
-        filter: `chat_id=eq.${chatId}`,
-        schema: "public",
-        table: "chat_messages",
+    .channel(`chat:${chatId}`, {
+      config: {
+        broadcast: { self: false },
       },
-      onChange,
+    })
+    .on(
+      "broadcast",
+      { event: "message" },
+      ({ payload }) => {
+        if (payload?.message) onMessage(payload.message);
+      },
     )
-    .subscribe();
+    .subscribe((status) => {
+      onStatusChange?.(status);
+    });
 
-  return () => {
-    supabase.removeChannel(channel);
+  return {
+    broadcast(message) {
+      channel.send({
+        type: "broadcast",
+        event: "message",
+        payload: { message },
+      });
+    },
+    unsubscribe() {
+      supabase.removeChannel(channel);
+    },
   };
 }
 

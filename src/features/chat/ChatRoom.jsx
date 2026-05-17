@@ -18,10 +18,11 @@ export function ChatRoom({ eventId = null, teamId = null, title, type }) {
   const [messages, setMessages] = useState([]);
   const [status, setStatus] = useState("loading");
   const endRef = useRef(null);
+  const realtimeRef = useRef({ broadcast: () => {} });
 
   useEffect(() => {
     let isMounted = true;
-    let unsubscribe = () => {};
+    let realtime = { unsubscribe: () => {} };
 
     async function loadMessages(chatId) {
       const result = await listChatMessages(chatId);
@@ -62,9 +63,19 @@ export function ChatRoom({ eventId = null, teamId = null, title, type }) {
 
       if (!isMounted) return;
 
-      unsubscribe = subscribeToChatMessages(chatResult.data.id, () => {
-        loadMessages(chatResult.data.id);
-      });
+      realtime = subscribeToChatMessages(
+        chatResult.data.id,
+        (incomingMessage) => {
+          setMessages((current) => upsertChatMessage(current, incomingMessage));
+        },
+        (realtimeStatus) => {
+          if (!isMounted) return;
+          if (realtimeStatus === "CHANNEL_ERROR" || realtimeStatus === "TIMED_OUT") {
+            setMessage("Realtime websocket connection dropped. Reconnecting on the next reload.");
+          }
+        },
+      );
+      realtimeRef.current = realtime;
       setStatus("ready");
     }
 
@@ -72,7 +83,8 @@ export function ChatRoom({ eventId = null, teamId = null, title, type }) {
 
     return () => {
       isMounted = false;
-      unsubscribe();
+      realtime.unsubscribe();
+      realtimeRef.current = { broadcast: () => {} };
     };
   }, [eventId, teamId, type]);
 
@@ -102,7 +114,7 @@ export function ChatRoom({ eventId = null, teamId = null, title, type }) {
     setMessage("");
     setMessages((current) => [...current, optimisticMessage]);
 
-    const { error } = await sendChatMessage({
+    const { data, error } = await sendChatMessage({
       body,
       chatId: chat.id,
       senderId: user.id,
@@ -116,9 +128,9 @@ export function ChatRoom({ eventId = null, teamId = null, title, type }) {
       );
     }
 
-    const refreshed = await listChatMessages(chat.id);
-    if (!refreshed.error) {
-      setMessages(refreshed.data ?? []);
+    if (data) {
+      setMessages((current) => upsertChatMessage(current, data, optimisticId));
+      realtimeRef.current.broadcast(data);
     }
 
     setIsSending(false);
@@ -310,6 +322,17 @@ function ChatMessage({ message, userId }) {
 
 function ChatSystemMessage({ body }) {
   return <p className="chat-system-message">{body}</p>;
+}
+
+function upsertChatMessage(messages, nextMessage, replaceId = null) {
+  const withoutOld = messages.filter((message) => {
+    if (replaceId && message.id === replaceId) return false;
+    return message.id !== nextMessage.id;
+  });
+
+  return [...withoutOld, nextMessage].sort(
+    (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
+  );
 }
 
 function getSenderName(message, isMine) {
