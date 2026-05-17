@@ -356,8 +356,12 @@ function AuthCallbackPage() {
 
   if (adminIntent?.adminOrigin && adminIntent.adminOrigin !== window.location.origin) {
     const target = new URL("/auth/callback", adminIntent.adminOrigin);
-    target.search = location.search;
-    target.hash = location.hash;
+    // Use the raw browser URL values instead of React Router's location so that
+    // PKCE codes (?code=…) and implicit-flow hash tokens (#access_token=…) are
+    // forwarded to the admin origin before the local Supabase client can
+    // consume them.
+    target.search = window.location.search;
+    target.hash = window.location.hash;
     window.location.replace(target.toString());
     return null;
   }
