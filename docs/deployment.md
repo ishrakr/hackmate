@@ -32,7 +32,7 @@
 The frontend can be deployed as separate participant and admin containers from the same source image.
 
 - Participant container: build normally and serve the mobile app.
-- Admin container: build with `VITE_APP_MODE=admin` so the root path redirects to `/admin`.
+- Admin container: build with `VITE_APP_MODE=admin` so the root path serves the admin portal directly.
 
 For Coolify/Caddy deployments, use the default `docker-compose.yml`. It builds production nginx containers and exposes container port `80` for both services. Point Coolify at the service named `web` for the participant app and `admin` for the standalone admin portal.
 

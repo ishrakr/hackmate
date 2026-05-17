@@ -110,6 +110,11 @@ const authRoute = {
   ],
 };
 
+const adminAuthCallbackRoute = {
+  path: "/admin/auth/callback",
+  element: <AdminAuthCallbackPage />,
+};
+
 const adminRoute = {
   path: "/admin",
   element: <RequireAdmin><AdminLayout /></RequireAdmin>,
@@ -126,10 +131,11 @@ export const router = createBrowserRouter(
   isAdminContainer
     ? [
         { path: "/auth/callback", element: <AdminAuthCallbackPage /> },
+        { path: "/admin/auth/callback", element: <AdminAuthCallbackPage /> },
         standaloneAdminRoute,
         adminRoute,
       ]
-    : [authRoute, mobileAppRoute, adminRoute],
+    : [adminAuthCallbackRoute, authRoute, mobileAppRoute, adminRoute],
 );
 
 function AuthLayout() {

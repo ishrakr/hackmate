@@ -40,10 +40,11 @@ Configure these redirect URLs in Supabase Auth for local development:
 
 ```txt
 http://localhost:5173/auth/callback
+http://localhost:5173/admin/auth/callback
 http://localhost:5174/auth/callback
 ```
 
-Production deployments should add the deployed participant and admin URLs with the same `/auth/callback` path. Set `VITE_ADMIN_BASE_URL` on the admin container to the exact public admin origin behind Coolify/Caddy.
+Production deployments should add the deployed participant `/auth/callback`, embedded admin `/admin/auth/callback`, and standalone admin `/auth/callback` URLs. Set `VITE_ADMIN_BASE_URL` on any participant-app deployment that exposes `/admin` so embedded admin login can redirect to the standalone admin domain.
 
 ## GitHub Signup
 

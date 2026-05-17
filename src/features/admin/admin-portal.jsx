@@ -24,6 +24,7 @@ const eventStatusOptions = ["draft", "open", "waitlist", "closed", "cancelled"];
 const registrationStatusOptions = ["Registered", "Waitlisted", "Checked in", "No-show", "Cancelled"];
 const sessionProviderOptions = ["github"];
 const adminBasePath = import.meta.env.VITE_APP_MODE === "admin" ? "" : "/admin";
+const isStandaloneAdmin = import.meta.env.VITE_APP_MODE === "admin";
 const temporaryGithubAdmin = "ishrakr";
 
 export function RequireAdmin({ children }) {
@@ -114,7 +115,7 @@ export function AdminLayout() {
             <span>{user?.email ?? "Authenticated admin"}</span>
           </div>
           <div className="d-grid gap-2">
-            {import.meta.env.VITE_APP_MODE === "admin" ? null : (
+            {isStandaloneAdmin ? null : (
               <Link className="btn btn-outline-light" to="/">
                 Back to App
               </Link>
@@ -893,7 +894,10 @@ function AdminSignInPage({ nextPath }) {
     const { error: signInError } = await signInWithProvider(
       provider,
       nextPath || adminPath(),
-      { callbackOrigin: getAdminCallbackOrigin() },
+      {
+        callbackOrigin: getAdminCallbackOrigin(),
+        callbackPath: getAdminCallbackPath(),
+      },
     );
 
     if (signInError) {
@@ -984,17 +988,21 @@ function adminPath(path = "") {
 }
 
 function getAdminCallbackOrigin() {
-  if (import.meta.env.VITE_APP_MODE === "admin") {
+  if (isStandaloneAdmin) {
     return window.location.origin;
   }
 
   return import.meta.env.VITE_ADMIN_BASE_URL || window.location.origin;
 }
 
+function getAdminCallbackPath() {
+  return isStandaloneAdmin ? "/auth/callback" : "/admin/auth/callback";
+}
+
 function getSafeAdminPath(value) {
   if (typeof value !== "string") return adminPath();
   if (!value.startsWith("/") || value.startsWith("//")) return adminPath();
-  if (import.meta.env.VITE_APP_MODE === "admin" && value.startsWith("/admin")) {
+  if (isStandaloneAdmin && value.startsWith("/admin")) {
     return value.replace(/^\/admin/, "") || "/";
   }
 

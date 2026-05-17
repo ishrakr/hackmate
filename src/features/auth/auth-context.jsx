@@ -94,7 +94,8 @@ export function AuthProvider({ children }) {
     setError("");
 
     const callbackOrigin = optionsOverride.callbackOrigin || window.location.origin;
-    const callbackUrl = new URL("/auth/callback", callbackOrigin);
+    const callbackPath = optionsOverride.callbackPath || "/auth/callback";
+    const callbackUrl = new URL(callbackPath, callbackOrigin);
     callbackUrl.searchParams.set("next", nextPath);
 
     const options = { redirectTo: callbackUrl.toString() };
