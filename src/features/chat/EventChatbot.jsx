@@ -14,7 +14,7 @@ import {
   getSuggestedBotQuestions,
 } from "./chatbot-service.js";
 
-export function EventChatbot() {
+export function EventChatbot({ compact = false }) {
   const { user } = useAuth();
   const [announcements, setAnnouncements] = useState([]);
   const [draft, setDraft] = useState("");
@@ -160,7 +160,7 @@ export function EventChatbot() {
   }
 
   return (
-    <section className="chat-panel native-card bot-panel" aria-label="Hackmate bot">
+    <section className={`chat-panel native-card bot-panel${compact ? " chat-panel-compact" : ""}`} aria-label="Hackmate bot">
       <div className="chat-panel-header">
         <div>
           <p className="card-label">Bot</p>

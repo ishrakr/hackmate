@@ -4,6 +4,7 @@ import {
   Link,
   Navigate,
   NavLink,
+  useNavigate,
   Outlet,
   useLocation,
   useParams,
@@ -1855,26 +1856,57 @@ function JoinTeamPage() {
 }
 
 function ChatPage({ title }) {
-  const type = title.toLowerCase();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const requestedType = title.toLowerCase();
+  const [channel, setChannel] = useState(requestedType);
+
+  useEffect(() => {
+    setChannel(requestedType);
+  }, [requestedType]);
+
+  function handleChannelChange(event) {
+    const nextChannel = event.target.value;
+    setChannel(nextChannel);
+    const suffix = location.search || "";
+    navigate(`/chat/${nextChannel}${suffix}`, { replace: true });
+  }
 
   return (
     <ScreenStack className="chat-screen-stack">
-      <EventChatRoom title={type === "support" ? "Organizer support" : title} type={type} />
+      <section className="chat-hub-shell">
+        <header className="chat-hub-topbar">
+          <div>
+            <p className="card-label">Chat</p>
+            <h1>{getChatChannelTitle(channel)}</h1>
+          </div>
+          <label className="chat-channel-select" htmlFor="chatChannel">
+            <span className="sr-only">Channel</span>
+            <select id="chatChannel" value={channel} onChange={handleChannelChange}>
+              <option value="lobby">Lobby</option>
+              <option value="support">Support</option>
+              <option value="bot">Bot</option>
+            </select>
+          </label>
+        </header>
+        {channel === "bot" ? (
+          <EventChatbot compact />
+        ) : (
+          <EventChatRoom title={channel === "support" ? "Organizer support" : "Lobby"} type={channel} compact />
+        )}
+      </section>
     </ScreenStack>
   );
 }
 
 function ChatbotPage() {
-  return (
-    <ScreenStack>
-      <ScreenHeader
-        eyebrow="Assistant"
-        title="Ask Hackmate Bot."
-        body="Get event answers from published FAQs, schedules, maps, announcements, and registration data."
-      />
-      <EventChatbot />
-    </ScreenStack>
-  );
+  return <ChatPage title="bot" />;
+}
+
+function getChatChannelTitle(channel) {
+  if (channel === "support") return "Support";
+  if (channel === "bot") return "Hackmate Bot";
+  return "Lobby";
 }
 
 function ProfilePage() {
