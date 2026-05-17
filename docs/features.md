@@ -107,8 +107,9 @@ Build order 5 adds Supabase-backed participant event screens:
 - Events list reads upcoming admin-created events from `events`.
 - Event details show description, date/time, venue, capacity, status, and recent announcements.
 - Event subpages read `schedules` and visible `faqs`.
-- Map and parking uses event venue/address/coordinates with an OpenStreetMap link when coordinates exist.
+- Map and parking uses Leaflet with OpenStreetMap tiles, venue coordinates, parking markers, entrances, and room layout data.
 - Feedback can upsert a user's event feedback.
+- Event details subscribe to event announcement changes so organizer updates appear without a page refresh.
 
 Event detail pages include:
 
@@ -132,6 +133,8 @@ Map features:
 - Venue marker.
 - Parking markers.
 - Entrances when available.
+- Room, food, help, and other organizer-defined markers.
+- Room layout areas grouped by floor and area type.
 - Nearby transit or useful markers when provided.
 - Mobile-friendly controls.
 - Address fallback for accessibility.
@@ -164,6 +167,15 @@ Requirements:
 - Optimistic sending.
 - Loading, empty, and error states.
 - Access control per channel.
+
+## Admin Content Publishing
+
+Admins and authorized event managers can publish operational event content from the Bootstrap admin portal:
+
+- FAQs with category and visibility controls.
+- OpenStreetMap markers for venue, parking, entrances, rooms, food, help, and other points.
+- Room layout areas with floor and type labels.
+- Event and global announcements with priority labels.
 
 ## Announcements
 

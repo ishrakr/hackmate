@@ -250,6 +250,34 @@ Chat types:
 - `created_at`
 - `last_seen_at`
 
+### event_map_markers
+
+- `id`
+- `event_id`
+- `label`
+- `description`
+- `marker_type`
+- `latitude`
+- `longitude`
+- `floor`
+- `sort_order`
+- `visible`
+- `created_at`
+- `updated_at`
+
+### event_room_areas
+
+- `id`
+- `event_id`
+- `name`
+- `description`
+- `floor`
+- `area_type`
+- `sort_order`
+- `visible`
+- `created_at`
+- `updated_at`
+
 ## Additional Tables
 
 - `roles`
@@ -257,5 +285,4 @@ Chat types:
 - `attendance_records`
 - `chatbot_conversations`
 - `chatbot_messages`
-- `event_map_markers`
 - `event_restrictions`

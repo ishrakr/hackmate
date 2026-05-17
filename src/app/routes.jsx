@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import {
   createBrowserRouter,
   Link,
@@ -19,8 +19,11 @@ import {
   getEvent,
   getEventAnnouncements,
   getEventFaqs,
+  getEventMapMarkers,
+  getEventRoomAreas,
   getEventSchedule,
   listEvents,
+  subscribeToEventAnnouncements,
   upsertFeedback,
 } from "../features/events/event-service.js";
 import {
@@ -64,6 +67,11 @@ const bottomTabs = [
 
 const sampleMembers = ["Alex", "Mina", "Jordan"];
 const isAdminContainer = import.meta.env.VITE_APP_MODE === "admin";
+const EventMap = lazy(() =>
+  import("../features/events/EventMap.jsx").then((module) => ({
+    default: module.EventMap,
+  })),
+);
 
 const adminRouteChildren = [
   { index: true, element: <AdminDashboardPage /> },
@@ -669,6 +677,15 @@ function EventDetailPage() {
     };
   }, [eventId]);
 
+  useEffect(() => {
+    if (!eventId) return undefined;
+
+    return subscribeToEventAnnouncements(eventId, async () => {
+      const { data } = await getEventAnnouncements(eventId);
+      setAnnouncements(data ?? []);
+    });
+  }, [eventId]);
+
   if (status === "loading") {
     return <LoadingCard label="Event" body="Loading event details." />;
   }
@@ -726,6 +743,8 @@ function EventSubPage({ title }) {
   const { user } = useAuth();
   const [event, setEvent] = useState(null);
   const [items, setItems] = useState([]);
+  const [mapMarkers, setMapMarkers] = useState([]);
+  const [roomAreas, setRoomAreas] = useState([]);
   const [form, setForm] = useState({ overall_rating: "", comments: "", anonymous: false, would_attend_again: false });
   const [status, setStatus] = useState("loading");
   const [message, setMessage] = useState("");
@@ -737,9 +756,17 @@ function EventSubPage({ title }) {
       setStatus("loading");
       const eventResult = await getEvent(eventId);
       let itemResult = { data: [], error: null };
+      let markerResult = { data: [], error: null };
+      let areaResult = { data: [], error: null };
 
       if (title === "FAQ") itemResult = await getEventFaqs(eventId);
       if (title === "Schedule") itemResult = await getEventSchedule(eventId);
+      if (title === "Map and Parking") {
+        [markerResult, areaResult] = await Promise.all([
+          getEventMapMarkers(eventId),
+          getEventRoomAreas(eventId),
+        ]);
+      }
 
       if (!isMounted) return;
 
@@ -750,9 +777,14 @@ function EventSubPage({ title }) {
       } else if (itemResult.error) {
         setEvent(eventResult.data);
         setMessage(itemResult.error.message);
+      } else if (markerResult.error || areaResult.error) {
+        setEvent(eventResult.data);
+        setMessage(markerResult.error?.message ?? areaResult.error?.message ?? "");
       } else {
         setEvent(eventResult.data);
         setItems(itemResult.data ?? []);
+        setMapMarkers(markerResult.data ?? []);
+        setRoomAreas(areaResult.data ?? []);
         setMessage("");
       }
 
@@ -804,7 +836,7 @@ function EventSubPage({ title }) {
         title={title}
         body={getEventSubPageBody(title)}
       />
-      {title === "Map and Parking" ? <MapAndParking event={event} /> : null}
+      {title === "Map and Parking" ? <MapAndParking event={event} markers={mapMarkers} roomAreas={roomAreas} /> : null}
       {title === "Schedule" ? <ScheduleList items={items} /> : null}
       {title === "FAQ" ? <FaqList items={items} /> : null}
       {title === "Feedback" ? (
@@ -858,24 +890,56 @@ function EventSubPage({ title }) {
   );
 }
 
-function MapAndParking({ event }) {
+function MapAndParking({ event, markers, roomAreas }) {
   const hasCoordinates = event?.latitude && event?.longitude;
   const mapUrl = hasCoordinates
     ? `https://www.openstreetmap.org/?mlat=${event.latitude}&mlon=${event.longitude}#map=16/${event.latitude}/${event.longitude}`
     : null;
+  const parkingMarkers = markers.filter((marker) => marker.marker_type === "parking");
+  const nonParkingMarkers = markers.filter((marker) => marker.marker_type !== "parking");
 
   return (
-    <section className="native-card event-section">
-      <p className="card-label">Venue</p>
-      <h2>{event?.location_name || "Location TBA"}</h2>
-      {event?.address ? <p>{event.address}</p> : <p>Address details will appear when organizers publish them.</p>}
-      {mapUrl ? (
-        <a className="primary-action" href={mapUrl} rel="noreferrer" target="_blank">
-          Open in OpenStreetMap
-        </a>
+    <>
+      <section className="native-card event-section">
+        <p className="card-label">Interactive venue map</p>
+        <h2>{event?.location_name || "Location TBA"}</h2>
+        {event?.address ? <p>{event.address}</p> : <p>Address details will appear when organizers publish them.</p>}
+        <Suspense fallback={<LoadingCard label="Map" body="Loading OpenStreetMap." />}>
+          <EventMap event={event} markers={markers} />
+        </Suspense>
+        {mapUrl ? (
+          <a className="primary-action" href={mapUrl} rel="noreferrer" target="_blank">
+            Open in OpenStreetMap
+          </a>
+        ) : null}
+      </section>
+
+      {markers.length > 0 ? (
+        <section className="native-card event-section">
+          <p className="card-label">Map markers</p>
+          {[...nonParkingMarkers, ...parkingMarkers].map((marker) => (
+            <article className="detail-item" key={marker.id}>
+              <strong>{marker.label}</strong>
+              <p>{formatStatus(marker.marker_type)}{marker.floor ? ` • Floor ${marker.floor}` : ""}</p>
+              {marker.description ? <p>{marker.description}</p> : null}
+            </article>
+          ))}
+        </section>
       ) : null}
-      <p className="fine-print">Parking, entrances, and venue markers will use organizer-provided map data in a later build step.</p>
-    </section>
+
+      {roomAreas.length > 0 ? (
+        <section className="native-card event-section">
+          <p className="card-label">Room layout</p>
+          {roomAreas.map((area) => (
+            <article className="detail-item" key={area.id}>
+              <strong>{area.name}</strong>
+              <p>{formatStatus(area.area_type)}{area.floor ? ` • Floor ${area.floor}` : ""}</p>
+              {area.description ? <p>{area.description}</p> : null}
+            </article>
+          ))}
+        </section>
+      ) : null}
+    </>
   );
 }
 

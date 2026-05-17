@@ -15,6 +15,9 @@ The admin portal is a dedicated Bootstrap-based interface for operational and se
 - Event creation and editing.
 - Participant lists per event.
 - Dashboard metrics for events, registrations, sessions, and audit activity.
+- FAQ publishing from the event editor.
+- OpenStreetMap marker and room layout publishing from the event editor.
+- Event and global announcement publishing.
 
 ## Admin Routes
 
@@ -50,8 +53,18 @@ Admins can create and manage events with:
 - Waitlist settings
 - Banner image
 - FAQ, schedule, restrictions, hours, parking, and food information
+- Venue coordinates, parking markers, entrances, help desks, food locations, and room layout areas
 
 Participants should only browse and register for events from the mobile app.
+
+## Event Content Publishing
+
+After an event is created, admins can use the event edit screen to manage:
+
+- FAQs with category and visibility controls.
+- OpenStreetMap markers for venue, parking, entrances, rooms, food, help, and other points.
+- Room layout areas with floor, type, visibility, and organizer notes.
+- Real-time announcements with normal, high, or urgent priority.
 
 ## Event Participants
 

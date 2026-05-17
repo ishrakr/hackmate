@@ -8,6 +8,8 @@ const eventColumns = `
   ends_at,
   location_name,
   address,
+  latitude,
+  longitude,
   capacity,
   registration_status,
   banner_url,
@@ -163,6 +165,141 @@ export async function saveAdminEvent(eventId, payload) {
   });
 
   return { data, error: null };
+}
+
+export async function listAdminFaqs(eventId) {
+  if (!supabase || !eventId) return { data: [], error: null };
+
+  const { data, error } = await supabase
+    .from("faqs")
+    .select("id,event_id,question,answer,category,visible,created_at,updated_at")
+    .eq("event_id", eventId)
+    .order("category", { ascending: true })
+    .order("created_at", { ascending: true });
+
+  return { data: data ?? [], error };
+}
+
+export async function saveAdminFaq(eventId, faqId, payload) {
+  if (!supabase) return { data: null, error: new Error("Supabase is not configured.") };
+
+  const query = faqId
+    ? supabase.from("faqs").update(payload).eq("id", faqId)
+    : supabase.from("faqs").insert({ ...payload, event_id: eventId });
+
+  const { data, error } = await query.select().single();
+  return { data, error };
+}
+
+export async function deleteAdminFaq(faqId) {
+  if (!supabase) return { error: new Error("Supabase is not configured.") };
+
+  const { error } = await supabase.from("faqs").delete().eq("id", faqId);
+  return { error };
+}
+
+export async function listAdminMapMarkers(eventId) {
+  if (!supabase || !eventId) return { data: [], error: null };
+
+  const { data, error } = await supabase
+    .from("event_map_markers")
+    .select("id,event_id,label,description,marker_type,latitude,longitude,floor,sort_order,visible,created_at,updated_at")
+    .eq("event_id", eventId)
+    .order("sort_order", { ascending: true })
+    .order("label", { ascending: true });
+
+  return { data: data ?? [], error };
+}
+
+export async function saveAdminMapMarker(eventId, markerId, payload) {
+  if (!supabase) return { data: null, error: new Error("Supabase is not configured.") };
+
+  const query = markerId
+    ? supabase.from("event_map_markers").update(payload).eq("id", markerId)
+    : supabase.from("event_map_markers").insert({ ...payload, event_id: eventId });
+
+  const { data, error } = await query.select().single();
+  return { data, error };
+}
+
+export async function deleteAdminMapMarker(markerId) {
+  if (!supabase) return { error: new Error("Supabase is not configured.") };
+
+  const { error } = await supabase.from("event_map_markers").delete().eq("id", markerId);
+  return { error };
+}
+
+export async function listAdminRoomAreas(eventId) {
+  if (!supabase || !eventId) return { data: [], error: null };
+
+  const { data, error } = await supabase
+    .from("event_room_areas")
+    .select("id,event_id,name,description,floor,area_type,sort_order,visible,created_at,updated_at")
+    .eq("event_id", eventId)
+    .order("sort_order", { ascending: true })
+    .order("name", { ascending: true });
+
+  return { data: data ?? [], error };
+}
+
+export async function saveAdminRoomArea(eventId, areaId, payload) {
+  if (!supabase) return { data: null, error: new Error("Supabase is not configured.") };
+
+  const query = areaId
+    ? supabase.from("event_room_areas").update(payload).eq("id", areaId)
+    : supabase.from("event_room_areas").insert({ ...payload, event_id: eventId });
+
+  const { data, error } = await query.select().single();
+  return { data, error };
+}
+
+export async function deleteAdminRoomArea(areaId) {
+  if (!supabase) return { error: new Error("Supabase is not configured.") };
+
+  const { error } = await supabase.from("event_room_areas").delete().eq("id", areaId);
+  return { error };
+}
+
+export async function listAdminAnnouncements(eventId) {
+  if (!supabase || !eventId) return { data: [], error: null };
+
+  const { data, error } = await supabase
+    .from("announcements")
+    .select("id,event_id,author_id,title,body,priority,created_at")
+    .or(`event_id.eq.${eventId},event_id.is.null`)
+    .order("created_at", { ascending: false });
+
+  return { data: data ?? [], error };
+}
+
+export async function saveAdminAnnouncement(eventId, announcementId, payload) {
+  if (!supabase) return { data: null, error: new Error("Supabase is not configured.") };
+
+  const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+  if (sessionError) return { data: null, error: sessionError };
+
+  const authorId = sessionData.session?.user?.id;
+  if (!authorId) return { data: null, error: new Error("Admin session is required.") };
+
+  const record = {
+    ...payload,
+    event_id: payload.is_global ? null : eventId,
+  };
+  delete record.is_global;
+
+  const query = announcementId
+    ? supabase.from("announcements").update(record).eq("id", announcementId)
+    : supabase.from("announcements").insert({ ...record, author_id: authorId });
+
+  const { data, error } = await query.select().single();
+  return { data, error };
+}
+
+export async function deleteAdminAnnouncement(announcementId) {
+  if (!supabase) return { error: new Error("Supabase is not configured.") };
+
+  const { error } = await supabase.from("announcements").delete().eq("id", announcementId);
+  return { error };
 }
 
 export async function listEventParticipants({
