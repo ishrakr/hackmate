@@ -9,6 +9,8 @@ import {
   useParams,
 } from "react-router-dom";
 import { useAuth } from "../features/auth/auth-context.jsx";
+import { ChatRoom, SupportChatRoom } from "../features/chat/ChatRoom.jsx";
+import { EventChatbot } from "../features/chat/EventChatbot.jsx";
 import {
   getEvent,
   getEventAnnouncements,
@@ -81,6 +83,7 @@ export const router = createBrowserRouter([
       { path: "join-team/:token", element: <RequireAuth><JoinTeamPage /></RequireAuth> },
       { path: "chat/lobby", element: <RequireAuth><ChatPage title="Lobby" /></RequireAuth> },
       { path: "chat/support", element: <RequireAuth><ChatPage title="Support" /></RequireAuth> },
+      { path: "chat/bot", element: <RequireAuth><ChatbotPage /></RequireAuth> },
       { path: "profile", element: <RequireAuth><ProfilePage /></RequireAuth> },
       { path: "settings", element: <RequireAuth><SettingsPage /></RequireAuth> },
       { path: "*", element: <NotFoundPage /> },
@@ -188,7 +191,7 @@ function HomePage() {
         <QuickAction to="/events" label="Events" value="2 live" />
         <QuickAction to="/match" label="Match" value="Eligibility" />
         <QuickAction to="/teams" label="Team" value="Set status" />
-        <QuickAction to="/chat/lobby" label="Lobby" value="Open" />
+        <QuickAction to="/chat/bot" label="Bot" value="Ask" />
       </section>
 
       <section className="native-card">
@@ -713,6 +716,7 @@ function EventDetailPage() {
         <MenuRow to="map" title="Map and parking" detail="Venue, parking, entrances" />
         <MenuRow to="schedule" title="Schedule" detail="Talks, food, judging" />
         <MenuRow to="faq" title="FAQ" detail="Rules, hours, restrictions" />
+        <MenuRow to={`/chat/bot?event=${event.id}`} title="Ask bot" detail="FAQ, schedule, location" />
         <MenuRow to="feedback" title="Feedback" detail="Post-event survey" />
       </div>
     </ScreenStack>
@@ -1212,7 +1216,7 @@ function TeamChatPage() {
         title={formatRouteLabel(teamId)}
         body="Approved team members will use this private realtime channel."
       />
-      <ChatPreview type="team" />
+      <ChatRoom teamId={teamId} title="Team channel" type="team" />
     </ScreenStack>
   );
 }
@@ -1238,6 +1242,8 @@ function JoinTeamPage() {
 }
 
 function ChatPage({ title }) {
+  const type = title.toLowerCase();
+
   return (
     <ScreenStack>
       <ScreenHeader
@@ -1245,7 +1251,38 @@ function ChatPage({ title }) {
         title={title}
         body="Fast, focused conversations for the lobby, teams, and organizer support."
       />
-      <ChatPreview type={title.toLowerCase()} />
+      <section className="native-card compact-card chat-command-strip">
+        <Link className="secondary-action" to="/chat/bot">
+          Ask Hackmate Bot
+        </Link>
+        {type === "support" ? (
+          <Link className="secondary-action" to="/chat/lobby">
+            Open lobby
+          </Link>
+        ) : (
+          <Link className="secondary-action" to="/chat/support">
+            Organizer support
+          </Link>
+        )}
+      </section>
+      {type === "support" ? (
+        <SupportChatRoom />
+      ) : (
+        <ChatRoom title={title} type={type} />
+      )}
+    </ScreenStack>
+  );
+}
+
+function ChatbotPage() {
+  return (
+    <ScreenStack>
+      <ScreenHeader
+        eyebrow="Assistant"
+        title="Ask Hackmate Bot."
+        body="Get event answers from published FAQs, schedules, maps, announcements, and registration data."
+      />
+      <EventChatbot />
     </ScreenStack>
   );
 }

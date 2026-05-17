@@ -1,0 +1,365 @@
+import { useEffect, useRef, useState } from "react";
+import { useSearchParams } from "react-router-dom";
+import { useAuth } from "../auth/auth-context.jsx";
+import { listEvents } from "../events/event-service.js";
+import {
+  getOrCreateChat,
+  listChatMessages,
+  sendChatMessage,
+  subscribeToChatMessages,
+} from "./chat-service.js";
+
+export function ChatRoom({ eventId = null, teamId = null, title, type }) {
+  const { user } = useAuth();
+  const [chat, setChat] = useState(null);
+  const [draft, setDraft] = useState("");
+  const [isSending, setIsSending] = useState(false);
+  const [message, setMessage] = useState("");
+  const [messages, setMessages] = useState([]);
+  const [status, setStatus] = useState("loading");
+  const endRef = useRef(null);
+
+  useEffect(() => {
+    let isMounted = true;
+    let unsubscribe = () => {};
+
+    async function loadMessages(chatId) {
+      const result = await listChatMessages(chatId);
+      if (!isMounted) return;
+
+      if (result.error) {
+        setMessage(result.error.message);
+        return;
+      }
+
+      setMessages(result.data ?? []);
+    }
+
+    async function connectChat() {
+      setStatus("loading");
+      setMessage("");
+      setMessages([]);
+      setChat(null);
+
+      const chatResult = await getOrCreateChat({ eventId, teamId, type });
+
+      if (!isMounted) return;
+
+      if (chatResult.error) {
+        setMessage(getChatErrorText(chatResult.error, type));
+        setStatus("error");
+        return;
+      }
+
+      if (!chatResult.data) {
+        setMessage("Chat channel is unavailable right now.");
+        setStatus("error");
+        return;
+      }
+
+      setChat(chatResult.data);
+      await loadMessages(chatResult.data.id);
+
+      if (!isMounted) return;
+
+      unsubscribe = subscribeToChatMessages(chatResult.data.id, () => {
+        loadMessages(chatResult.data.id);
+      });
+      setStatus("ready");
+    }
+
+    connectChat();
+
+    return () => {
+      isMounted = false;
+      unsubscribe();
+    };
+  }, [eventId, teamId, type]);
+
+  useEffect(() => {
+    endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+  }, [messages.length, status]);
+
+  async function handleSubmit(event) {
+    event.preventDefault();
+
+    const body = draft.trim();
+    if (!body || !chat || !user || isSending) return;
+
+    const optimisticId = `optimistic-${Date.now()}`;
+    const optimisticMessage = {
+      body,
+      chat_id: chat.id,
+      created_at: new Date().toISOString(),
+      id: optimisticId,
+      optimistic: true,
+      sender_id: user.id,
+      sender_profile: getUserProfilePreview(user),
+    };
+
+    setDraft("");
+    setIsSending(true);
+    setMessage("");
+    setMessages((current) => [...current, optimisticMessage]);
+
+    const { error } = await sendChatMessage({
+      body,
+      chatId: chat.id,
+      senderId: user.id,
+    });
+
+    if (error) {
+      setDraft(body);
+      setMessage(getSendErrorText(error, type));
+      setMessages((current) =>
+        current.filter((item) => item.id !== optimisticId),
+      );
+    }
+
+    const refreshed = await listChatMessages(chat.id);
+    if (!refreshed.error) {
+      setMessages(refreshed.data ?? []);
+    }
+
+    setIsSending(false);
+  }
+
+  const isReady = status === "ready";
+
+  return (
+    <section className="chat-panel native-card" aria-label={`${title} messages`}>
+      <div className="chat-panel-header">
+        <div>
+          <p className="card-label">{type}</p>
+          <h2>{title}</h2>
+        </div>
+        <span className={`live-dot${isReady ? " is-live" : ""}`}>
+          {isReady ? "Live" : "Connecting"}
+        </span>
+      </div>
+
+      <div className="message-list" aria-live="polite">
+        {status === "loading" ? (
+          <ChatSystemMessage body="Opening the channel." />
+        ) : null}
+        {status === "error" ? <ChatSystemMessage body={message} /> : null}
+        {isReady && messages.length === 0 ? (
+          <ChatSystemMessage body="No messages yet. Start the thread." />
+        ) : null}
+        {messages.map((item) => (
+          <ChatMessage key={item.id} message={item} userId={user?.id} />
+        ))}
+        <div ref={endRef} />
+      </div>
+
+      {message && status !== "error" ? (
+        <p className="auth-error chat-error" role="alert">
+          {message}
+        </p>
+      ) : null}
+
+      <form className="chat-composer" onSubmit={handleSubmit}>
+        <textarea
+          aria-label={`Message ${title}`}
+          disabled={!isReady || isSending}
+          placeholder={isReady ? "Message..." : "Waiting for channel..."}
+          rows="1"
+          value={draft}
+          onChange={(event) => setDraft(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === "Enter" && !event.shiftKey) {
+              event.preventDefault();
+              event.currentTarget.form?.requestSubmit();
+            }
+          }}
+        />
+        <button
+          className="send-action"
+          disabled={!draft.trim() || !isReady || isSending}
+          type="submit"
+        >
+          {isSending ? "..." : "Send"}
+        </button>
+      </form>
+    </section>
+  );
+}
+
+export function SupportChatRoom() {
+  const [events, setEvents] = useState([]);
+  const [message, setMessage] = useState("");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [selectedEventId, setSelectedEventId] = useState(
+    searchParams.get("event") ?? "",
+  );
+  const [status, setStatus] = useState("loading");
+  const searchKey = searchParams.toString();
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadEventChoices() {
+      const { data, error } = await listEvents();
+
+      if (!isMounted) return;
+
+      setEvents(data ?? []);
+      setMessage(error?.message ?? "");
+
+      const requestedEventId = new URLSearchParams(searchKey).get("event");
+      const fallbackEventId = data?.[0]?.id ?? "";
+      const nextEventId =
+        data?.some((event) => event.id === requestedEventId)
+          ? requestedEventId
+          : fallbackEventId;
+
+      setSelectedEventId(nextEventId);
+      setStatus("ready");
+    }
+
+    loadEventChoices();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [searchKey]);
+
+  function handleEventChange(event) {
+    const nextEventId = event.target.value;
+    setSelectedEventId(nextEventId);
+    setSearchParams(nextEventId ? { event: nextEventId } : {});
+  }
+
+  if (status === "loading") {
+    return (
+      <section className="native-card compact-card">
+        <p>Loading support channels.</p>
+      </section>
+    );
+  }
+
+  if (message) {
+    return (
+      <section className="native-card compact-card">
+        <p className="auth-error">{message}</p>
+      </section>
+    );
+  }
+
+  if (events.length === 0) {
+    return (
+      <section className="native-card compact-card">
+        <p>No events are available for support chat yet.</p>
+      </section>
+    );
+  }
+
+  return (
+    <>
+      <section className="native-card compact-card chat-channel-picker">
+        <label className="form-field" htmlFor="supportEvent">
+          <span>Event</span>
+          <select
+            id="supportEvent"
+            value={selectedEventId}
+            onChange={handleEventChange}
+          >
+            {events.map((event) => (
+              <option key={event.id} value={event.id}>
+                {event.name}
+              </option>
+            ))}
+          </select>
+        </label>
+      </section>
+      {selectedEventId ? (
+        <ChatRoom
+          key={selectedEventId}
+          eventId={selectedEventId}
+          title="Organizer support"
+          type="support"
+        />
+      ) : null}
+    </>
+  );
+}
+
+function ChatMessage({ message, userId }) {
+  const isMine = message.sender_id === userId;
+  const senderName = getSenderName(message, isMine);
+
+  return (
+    <article className={`chat-message${isMine ? " is-mine" : ""}`}>
+      {!isMine ? (
+        <span className="message-avatar" aria-hidden="true">
+          {senderName.charAt(0).toUpperCase()}
+        </span>
+      ) : null}
+      <div>
+        <div className={`message-bubble ${isMine ? "outgoing" : "incoming"}`}>
+          {message.body}
+        </div>
+        <p className="message-meta">
+          {senderName} at {formatMessageTime(message.created_at)}
+          {message.optimistic ? " - sending" : ""}
+        </p>
+      </div>
+    </article>
+  );
+}
+
+function ChatSystemMessage({ body }) {
+  return <p className="chat-system-message">{body}</p>;
+}
+
+function getSenderName(message, isMine) {
+  if (isMine) return "You";
+  return message.sender_profile?.display_name ?? "Hackmate user";
+}
+
+function getUserProfilePreview(user) {
+  return {
+    avatar_url: user?.user_metadata?.avatar_url ?? null,
+    display_name:
+      user?.user_metadata?.full_name ||
+      user?.user_metadata?.name ||
+      user?.user_metadata?.user_name ||
+      user?.email?.split("@")[0] ||
+      "You",
+  };
+}
+
+function formatMessageTime(value) {
+  if (!value) return "now";
+
+  return new Intl.DateTimeFormat(undefined, {
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(new Date(value));
+}
+
+function getChatErrorText(error, type) {
+  if (error?.code === "42501") {
+    if (type === "team") {
+      return "This team channel is available only to approved team members.";
+    }
+
+    if (type === "support") {
+      return "Support chat requires event registration or organizer access.";
+    }
+
+    return "You do not have access to this chat yet.";
+  }
+
+  return error?.message ?? "Chat is unavailable right now.";
+}
+
+function getSendErrorText(error, type) {
+  if (error?.code === "42501") {
+    return type === "support"
+      ? "You need event access before sending support messages."
+      : "You do not have permission to send in this channel.";
+  }
+
+  return error?.message ?? "Message could not be sent.";
+}
