@@ -172,6 +172,73 @@ export async function createJoinRequest({ teamId, userId, message }) {
   return { data, error };
 }
 
+export async function listTeamJoinRequests(teamId) {
+  if (!supabase || !teamId) return { data: [], error: null };
+
+  const { data: requests, error } = await supabase
+    .from("team_join_requests")
+    .select("id,team_id,user_id,status,message,created_at")
+    .eq("team_id", teamId)
+    .eq("status", "pending")
+    .order("created_at", { ascending: true });
+
+  if (error || !requests?.length) return { data: requests ?? [], error };
+
+  const userIds = [...new Set(requests.map((request) => request.user_id))];
+  const { data: profiles, error: profileError } = await supabase
+    .from("profiles")
+    .select("user_id,display_name,avatar_url,bio")
+    .in("user_id", userIds);
+
+  if (profileError) return { data: [], error: profileError };
+
+  const profileMap = new Map((profiles ?? []).map((profile) => [profile.user_id, profile]));
+  return {
+    data: requests.map((request) => ({
+      ...request,
+      profile: profileMap.get(request.user_id) ?? null,
+    })),
+    error: null,
+  };
+}
+
+export async function reviewTeamJoinRequest(request, decision) {
+  if (!supabase || !request?.id) return { data: null, error: null };
+
+  const status = decision === "approved" ? "approved" : "rejected";
+  const { data, error } = await supabase
+    .from("team_join_requests")
+    .update({ status })
+    .eq("id", request.id)
+    .select("id,team_id,user_id,status")
+    .single();
+
+  if (error) return { data: null, error };
+
+  if (status === "approved") {
+    const { error: memberError } = await supabase
+      .from("team_members")
+      .upsert(
+        {
+          team_id: request.team_id,
+          user_id: request.user_id,
+          role: "Member",
+          status: "approved",
+        },
+        { onConflict: "team_id,user_id" },
+      );
+
+    if (memberError) return { data: null, error: memberError };
+
+    await supabase
+      .from("profiles")
+      .update({ current_team_id: request.team_id, looking_for_team: false, open_to_joining_team: false })
+      .eq("user_id", request.user_id);
+  }
+
+  return { data, error: null };
+}
+
 async function hashToken(token) {
   const encoded = new TextEncoder().encode(token);
   const digest = await crypto.subtle.digest("SHA-256", encoded);

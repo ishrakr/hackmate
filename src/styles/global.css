@@ -875,6 +875,30 @@ h2 {
   gap: 0.5rem;
 }
 
+.request-stack {
+  display: grid;
+  gap: 0.7rem;
+}
+
+.request-card {
+  display: grid;
+  gap: 0.7rem;
+  padding: 0.85rem;
+  background: #f8fafc;
+  border: 1px solid var(--color-border);
+  border-radius: 1rem;
+}
+
+.request-card p {
+  margin-bottom: 0;
+}
+
+.request-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.6rem;
+}
+
 .chip-row span,
 .member-pill {
   display: inline-flex;

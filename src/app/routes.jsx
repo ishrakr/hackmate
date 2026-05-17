@@ -58,7 +58,9 @@ import {
   createTeamJoinToken,
   getTeamByJoinToken,
   getTeam,
+  listTeamJoinRequests,
   listUserTeams,
+  reviewTeamJoinRequest,
   updateTeam,
 } from "../features/teams/team-service.js";
 
@@ -1529,6 +1531,7 @@ function TeamDetailPage() {
   const { teamId } = useParams();
   const { user } = useAuth();
   const [team, setTeam] = useState(null);
+  const [joinRequests, setJoinRequests] = useState([]);
   const [form, setForm] = useState({ name: "", description: "", project_idea: "", github_url: "", devpost_url: "", recruiting_members: false });
   const [invite, setInvite] = useState(null);
   const [status, setStatus] = useState("loading");
@@ -1539,7 +1542,10 @@ function TeamDetailPage() {
 
     async function loadTeam() {
       setStatus("loading");
-      const { data, error } = await getTeam(teamId);
+      const [{ data, error }, requestResult] = await Promise.all([
+        getTeam(teamId),
+        listTeamJoinRequests(teamId),
+      ]);
 
       if (!isMounted) return;
 
@@ -1549,8 +1555,9 @@ function TeamDetailPage() {
         setMessage("This team was not found or you do not have access.");
       } else {
         setTeam(data);
+        setJoinRequests(requestResult.data ?? []);
         setForm(teamToForm(data));
-        setMessage("");
+        setMessage(requestResult.error?.message ?? "");
       }
 
       setStatus("idle");
@@ -1604,6 +1611,29 @@ function TeamDetailPage() {
     setStatus("idle");
   }
 
+  async function handleReviewRequest(request, decision) {
+    setStatus(`review-${request.id}`);
+    setMessage("");
+
+    const { error } = await reviewTeamJoinRequest(request, decision);
+
+    if (error) {
+      setMessage(error.message);
+      setStatus("idle");
+      return;
+    }
+
+    const [{ data: nextTeam }, { data: nextRequests }] = await Promise.all([
+      getTeam(teamId),
+      listTeamJoinRequests(teamId),
+    ]);
+
+    setTeam(nextTeam);
+    setJoinRequests(nextRequests ?? []);
+    setMessage(decision === "approved" ? "Member approved." : "Request rejected.");
+    setStatus("idle");
+  }
+
   if (status === "loading") {
     return <LoadingCard label="Team" body="Loading team profile." />;
   }
@@ -1635,6 +1665,24 @@ function TeamDetailPage() {
             <span className="member-pill" key={member.id}>
               {member.profiles?.display_name ?? "Team member"}{member.role ? ` · ${member.role}` : ""}
             </span>
+          ))}
+        </div>
+      </section>
+      <section className="native-card event-section">
+        <p className="card-label">Join requests</p>
+        {joinRequests.length === 0 ? <p>No pending requests.</p> : null}
+        <div className="request-stack">
+          {joinRequests.map((request) => (
+            <article className="request-card" key={request.id}>
+              <div>
+                <strong>{request.profile?.display_name ?? "Pending participant"}</strong>
+                {request.message ? <p>{request.message}</p> : <p className="fine-print">No message provided.</p>}
+              </div>
+              <div className="request-actions">
+                <button className="secondary-action" disabled={status === `review-${request.id}`} onClick={() => handleReviewRequest(request, "rejected")} type="button">Reject</button>
+                <button className="primary-action" disabled={status === `review-${request.id}`} onClick={() => handleReviewRequest(request, "approved")} type="button">Approve</button>
+              </div>
+            </article>
           ))}
         </div>
       </section>
