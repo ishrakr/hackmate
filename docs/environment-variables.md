@@ -11,6 +11,7 @@ VITE_SUPABASE_URL=
 VITE_SUPABASE_ANON_KEY=
 VITE_APP_MODE=
 VITE_ADMIN_BASE_URL=
+VITE_PARTICIPANT_BASE_URL=
 SUPABASE_SERVICE_ROLE_KEY=
 GITHUB_CLIENT_ID=
 GITHUB_CLIENT_SECRET=
@@ -24,8 +25,9 @@ QR_TOKEN_SECRET=
 
 - `VITE_SUPABASE_URL`: Public Supabase project URL used by the frontend.
 - `VITE_SUPABASE_ANON_KEY`: Public Supabase anon key used by the frontend with RLS.
-- `VITE_APP_MODE`: Optional frontend mode. Set to `admin` for the separate admin container so `/` redirects into the admin portal.
+- `VITE_APP_MODE`: Optional frontend mode. Set to `admin` for the separate admin container so `/` serves the admin portal.
 - `VITE_ADMIN_BASE_URL`: Public admin portal origin used for admin OAuth redirects, for example `https://admin.example.com`.
+- `VITE_PARTICIPANT_BASE_URL`: Public participant app origin used by the admin portal recovery link, for example `https://app.example.com`.
 - `SUPABASE_SERVICE_ROLE_KEY`: Private key for trusted backend operations only.
 - `GITHUB_CLIENT_ID`: GitHub OAuth app client ID.
 - `GITHUB_CLIENT_SECRET`: GitHub OAuth app client secret.

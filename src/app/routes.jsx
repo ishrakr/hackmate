@@ -9,7 +9,10 @@ import {
   useParams,
 } from "react-router-dom";
 import {
+  consumeAdminOAuthIntent,
   consumeOAuthFlow,
+  markAdminOAuthIntent,
+  peekAdminOAuthIntent,
   peekOAuthFlow,
   useAuth,
 } from "../features/auth/auth-context.jsx";
@@ -114,6 +117,11 @@ const authRoute = {
   ],
 };
 
+const adminOAuthStartRoute = {
+  path: "/admin/login",
+  element: <AdminOAuthStartPage />,
+};
+
 const adminAuthCallbackRoute = {
   path: "/admin/auth/callback",
   element: <AdminAuthCallbackPage />,
@@ -139,7 +147,7 @@ export const router = createBrowserRouter(
         standaloneAdminRoute,
         adminRoute,
       ]
-    : [adminAuthCallbackRoute, authRoute, mobileAppRoute, adminRoute],
+    : [adminAuthCallbackRoute, adminOAuthStartRoute, authRoute, mobileAppRoute, adminRoute],
 );
 
 function AuthLayout() {
@@ -212,6 +220,16 @@ function MobileAppLayout() {
       </div>
     </div>
   );
+}
+
+function AdminOAuthStartPage() {
+  const location = useLocation();
+  const params = new URLSearchParams(location.search);
+  const nextPath = getSafeNextPath(params.get("next"), "/admin");
+
+  markAdminOAuthIntent(nextPath);
+
+  return <Navigate replace to={`/admin${location.search}${location.hash}`} />;
 }
 
 function HomePage() {
@@ -358,17 +376,18 @@ function AuthCallbackPage() {
   const location = useLocation();
   const { error, isAuthenticated, isLoading, isSupabaseConfigured } = useAuth();
   const flow = peekOAuthFlow();
+  const adminIntent = peekAdminOAuthIntent();
   const nextPath = getSafeNextPath(new URLSearchParams(location.search).get("next"));
 
-  if (flow?.mode === "admin") {
+  if (flow?.mode === "admin" || adminIntent) {
     const params = new URLSearchParams(location.search);
 
-    if (!params.get("next") && flow.nextPath) {
-      params.set("next", flow.nextPath);
+    if (!params.get("next")) {
+      params.set("next", flow?.nextPath || adminIntent?.nextPath || "/admin");
     }
 
     const query = params.toString();
-    const callbackPath = flow.callbackPath || "/admin/auth/callback";
+    const callbackPath = flow?.callbackPath || "/admin/auth/callback";
     const redirectPath = callbackPath.startsWith("/admin")
       ? `${callbackPath}${query ? `?${query}` : ""}${location.hash}`
       : `/admin/auth/callback${query ? `?${query}` : ""}${location.hash}`;

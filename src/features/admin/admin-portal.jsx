@@ -8,7 +8,12 @@ import {
   useNavigate,
   useParams,
 } from "react-router-dom";
-import { consumeOAuthFlow, useAuth } from "../auth/auth-context.jsx";
+import {
+  consumeAdminOAuthIntent,
+  consumeOAuthFlow,
+  markAdminOAuthIntent,
+  useAuth,
+} from "../auth/auth-context.jsx";
 import {
   getAdminDashboardMetrics,
   getAdminEvent,
@@ -888,15 +893,17 @@ export function AdminNotFoundPage() {
 function AdminSignInPage({ nextPath }) {
   const { error, signInWithProvider } = useAuth();
   const [pendingProvider, setPendingProvider] = useState("");
+  const adminNextPath = nextPath || adminPath();
 
   async function handleSignIn(provider) {
     setPendingProvider(provider);
+    markAdminOAuthIntent(adminNextPath);
     const { error: signInError } = await signInWithProvider(
       provider,
-      nextPath || adminPath(),
+      adminNextPath,
       {
-        callbackOrigin: getAdminCallbackOrigin(),
-        callbackPath: getAdminCallbackPath(),
+        callbackOrigin: window.location.origin,
+        callbackPath: "/auth/callback",
         mode: "admin",
       },
     );
@@ -919,6 +926,12 @@ function AdminSignInPage({ nextPath }) {
                   This is the standalone Bootstrap operations console for events,
                   participants, sessions, users, and audit logs.
                 </p>
+                {isStandaloneAdmin ? (
+                  <div className="alert alert-light border mb-4">
+                    If GitHub returns you to the participant app, open this recovery link after login:{" "}
+                    <a href={buildParticipantAdminRecoveryUrl(adminNextPath)}>admin recovery</a>.
+                  </div>
+                ) : null}
                 <div className="d-grid gap-2">
                   <button
                     className="btn btn-primary btn-lg"
@@ -958,6 +971,7 @@ export function AdminAuthCallbackPage() {
 
   if (!isLoading && isAuthenticated) {
     consumeOAuthFlow();
+    consumeAdminOAuthIntent();
     return <Navigate replace to={nextPath} />;
   }
 
@@ -989,16 +1003,12 @@ function adminPath(path = "") {
   return `${adminBasePath}${path}`;
 }
 
-function getAdminCallbackOrigin() {
-  if (isStandaloneAdmin) {
-    return window.location.origin;
-  }
-
-  return import.meta.env.VITE_ADMIN_BASE_URL || window.location.origin;
-}
-
-function getAdminCallbackPath() {
-  return isStandaloneAdmin ? "/auth/callback" : "/admin/auth/callback";
+function buildParticipantAdminRecoveryUrl(nextPath) {
+  const fallbackOrigin = import.meta.env.VITE_PARTICIPANT_BASE_URL;
+  const participantOrigin = fallbackOrigin || window.location.origin;
+  const url = new URL("/admin/login", participantOrigin);
+  url.searchParams.set("next", nextPath || "/admin");
+  return url.toString();
 }
 
 function getSafeAdminPath(value) {
