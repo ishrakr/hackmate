@@ -55,8 +55,13 @@ begin
       set status = 'approved', updated_at = now();
 
     insert into public.chats (team_id, type)
-    values (created_team_id, 'team')
-    on conflict (team_id) do nothing;
+    select created_team_id, 'team'
+    where not exists (
+      select 1
+      from public.chats c
+      where c.team_id = created_team_id
+        and c.type = 'team'
+    );
 
     update public.profiles
     set current_team_id = created_team_id,
