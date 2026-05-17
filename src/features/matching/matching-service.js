@@ -16,14 +16,14 @@ export async function getMatchingContext(userId, eventId = null) {
   if (teamsResult.error) return { data: null, error: teamsResult.error };
   if (registrationsResult.error) return { data: null, error: registrationsResult.error };
 
-  const registrations = registrationsResult.data ?? [];
+  const registrations = (registrationsResult.data ?? []).filter((row) => row.status !== "Cancelled");
   const selectedEventId = eventId ?? registrations[0]?.event_id ?? null;
   const recruitingTeams = (teamsResult.data ?? []).filter(
     (team) => team.recruiting_members && (!selectedEventId || team.event_id === selectedEventId),
   );
   const actors = [];
 
-  if (profileResult.data?.looking_for_team || profileResult.data?.open_to_joining_team) {
+  if (selectedEventId && (profileResult.data?.looking_for_team || profileResult.data?.open_to_joining_team)) {
     actors.push({ type: "user", id: userId, label: "Me", profile: profileResult.data, event_id: selectedEventId });
   }
 

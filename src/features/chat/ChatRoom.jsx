@@ -306,7 +306,8 @@ export function EventChatRoom({ title, type = "lobby" }) {
 
       if (!isMounted) return;
 
-      const registeredIds = new Set((registrationResult.data ?? []).map((row) => row.event_id));
+      const activeRegistrations = (registrationResult.data ?? []).filter((row) => row.status !== "Cancelled");
+      const registeredIds = new Set(activeRegistrations.map((row) => row.event_id));
       const registeredEvents = (eventResult.data ?? []).filter((event) => registeredIds.has(event.id));
       const requestedEventId = new URLSearchParams(searchKey).get("event");
       const fallbackEventId = registeredEvents[0]?.id ?? "";
@@ -315,7 +316,7 @@ export function EventChatRoom({ title, type = "lobby" }) {
         : fallbackEventId;
 
       setEvents(registeredEvents);
-      setRegistrations(registrationResult.data ?? []);
+      setRegistrations(activeRegistrations);
       setSelectedEventId(nextEventId);
       setMessage(eventResult.error?.message ?? registrationResult.error?.message ?? "");
       setStatus("ready");

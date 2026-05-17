@@ -13,6 +13,17 @@ export async function listEvents() {
   return { data: data ?? [], error };
 }
 
+export async function countLiveEvents() {
+  if (!supabase) return { count: 0, error: null };
+
+  const { count, error } = await supabase
+    .from("events")
+    .select("id", { count: "exact", head: true })
+    .in("registration_status", ["open", "waitlist"]);
+
+  return { count: count ?? 0, error };
+}
+
 export async function listUserEventRegistrations(userId) {
   if (!supabase || !userId) return { data: [], error: null };
 

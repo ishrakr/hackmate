@@ -17,6 +17,7 @@ import { consumeAdminOAuthIntent } from "../lib/oauth-intent.js";
 import { ChatRoom, EventChatRoom } from "../features/chat/ChatRoom.jsx";
 import { EventChatbot } from "../features/chat/EventChatbot.jsx";
 import {
+  countLiveEvents,
   getEvent,
   getEventAnnouncements,
   getEventFaqs,
@@ -219,33 +220,37 @@ function MobileAppLayout() {
 }
 
 function HomePage() {
+  const [liveEventCount, setLiveEventCount] = useState(null);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    countLiveEvents().then(({ count }) => {
+      if (isMounted) setLiveEventCount(count);
+    });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
   return (
     <ScreenStack>
-      <ScreenHeader
-        eyebrow="Today"
-        title="Build your hackathon crew."
-        body="Pick your event, set your team status, and keep everything you need one thumb away."
-      />
-
-      <section className="hero-card">
-        <div>
-          <p className="card-label">Next step</p>
-          <h2>Tell Hackmate if you have a team.</h2>
-          <p>
-            Add existing teammates now, or choose looking for a team to unlock the
-            swipe pool.
-          </p>
+      <section className="home-hero-card native-card">
+        <p className="card-label">Hackmate</p>
+        <h1>Event first. Team next.</h1>
+        <p>Join an event, set your team status, then match and chat with people at that hackathon.</p>
+        <div className="home-action-row">
+          <Link className="primary-action" to="/events">Choose event</Link>
+          <Link className="secondary-action" to="/match">Match</Link>
         </div>
-        <Link className="primary-action" to="/onboarding">
-          Continue setup
-        </Link>
       </section>
 
       <section className="quick-grid" aria-label="Quick actions">
-        <QuickAction to="/events" label="Events" value="2 live" />
-        <QuickAction to="/match" label="Match" value="Eligibility" />
-        <QuickAction to="/teams" label="Team" value="Set status" />
-        <QuickAction to="/chat/bot" label="Bot" value="Ask" />
+        <QuickAction to="/events" label="Events" value={liveEventCount === null ? "Loading" : `${liveEventCount} live`} />
+        <QuickAction to="/teams" label="Teams" value="Create" />
+        <QuickAction to="/chat/lobby" label="Chat" value="Event" />
+        <QuickAction to="/profile" label="Profile" value="Edit" />
       </section>
     </ScreenStack>
   );
@@ -1769,45 +1774,34 @@ function ProfilePage() {
 
   return (
     <ScreenStack>
-      <ScreenHeader
-        eyebrow="Profile"
-        title="Make it easy to choose you."
-        body="Show links, projects, skills, competency, desired role, availability, and team status."
-      />
-      <section className="profile-card native-card">
-        {avatarUrl ? (
-          <img className="profile-avatar" src={avatarUrl} alt="" />
-        ) : (
-          <span className="profile-avatar">{displayName.charAt(0)}</span>
-        )}
-        <h2>{displayName}</h2>
-        <p className="fine-print">{user?.email ?? "OAuth account"}</p>
-        <div className="chip-row">
-          <span>{user?.app_metadata?.provider ?? "OAuth"}</span>
-          <span>{role ?? "participant"}</span>
-          <span>{form.looking_for_team ? "Looking for team" : "Team status open"}</span>
+      <section className="profile-summary-card">
+        <div className="profile-summary-top">
+          {avatarUrl ? (
+            <img className="profile-avatar" src={avatarUrl} alt="" />
+          ) : (
+            <span className="profile-avatar">{displayName.charAt(0)}</span>
+          )}
+          <div>
+            <p className="card-label">Profile</p>
+            <h1>{displayName}</h1>
+            <p>{form.desired_role || "Add your role"} · {form.experience_level || "Experience TBA"}</p>
+          </div>
         </div>
+        <p>{form.bio || "Add a short intro so teams know what you want to build."}</p>
         <div className="profile-link-grid">
           <ProfileLink label="GitHub" href={form.github_url} />
           <ProfileLink label="LinkedIn" href={form.linkedin_url} />
           <ProfileLink label="Devpost" href={form.devpost_url} />
         </div>
       </section>
-      <form className="native-card profile-form" onSubmit={handleSubmit}>
+      <form className="native-card profile-form compact-profile-form" onSubmit={handleSubmit}>
+        <p className="card-label">Edit details</p>
         <Field label="Display name" htmlFor="displayName">
           <input
             id="displayName"
             required
             value={form.display_name}
             onChange={(event) => updateField("display_name", event.target.value)}
-          />
-        </Field>
-        <Field label="Avatar URL" htmlFor="avatarUrl">
-          <input
-            id="avatarUrl"
-            inputMode="url"
-            value={form.avatar_url}
-            onChange={(event) => updateField("avatar_url", event.target.value)}
           />
         </Field>
         <Field label="Bio" htmlFor="bio">
@@ -1819,6 +1813,14 @@ function ProfilePage() {
           />
         </Field>
         <div className="form-grid">
+          <Field label="Avatar URL" htmlFor="avatarUrl">
+            <input
+              id="avatarUrl"
+              inputMode="url"
+              value={form.avatar_url}
+              onChange={(event) => updateField("avatar_url", event.target.value)}
+            />
+          </Field>
           <Field label="Desired role" htmlFor="desiredRole">
             <input
               id="desiredRole"
